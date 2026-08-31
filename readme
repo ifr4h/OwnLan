@@ -1,0 +1,60 @@
+# OwnLane
+
+UK operating platform for independent driving instructors.
+
+## Stack
+
+- `apps/api` — Yii2 REST API (PHP 8.2+)
+- `apps/web` — Nuxt instructor app (Vue 3 + TypeScript)
+- PostgreSQL 16 via Docker Compose
+
+## Prerequisites
+
+- Docker (Docker Desktop, or Colima: `colima start`)
+- PHP 8.2+ with `pdo_pgsql`
+- Composer
+- Node.js 20+ and npm
+
+## First-time setup
+
+```bash
+# 1. Database
+docker compose up -d
+
+# 2. API env (already present if you cloned with examples applied)
+cp apps/api/.env.example apps/api/.env
+
+# 3. Web env
+cp apps/web/.env.example apps/web/.env
+
+# 4. Install dependencies (if needed)
+cd apps/api && composer install
+cd ../web && npm install
+```
+
+## Run locally
+
+Use three terminals from the repo root:
+
+```bash
+# Terminal 1 — Postgres
+docker compose up -d
+
+# Terminal 2 — API on :8080
+cd apps/api
+php -S 127.0.0.1:8080 -t web web/router.php
+
+# Terminal 3 — Instructor app on :3000
+cd apps/web
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+Health check: [http://localhost:8080/health](http://localhost:8080/health)  
+Proxied from the web app: [http://localhost:3000/api/health](http://localhost:3000/api/health)
+
+## Current milestone
+
+Step 1 only: repo + runtimes + empty instructor shell.  
+Auth, organisations, pupils and lessons are not built yet.
