@@ -96,11 +96,11 @@ const deltaLabel = computed(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-bark) 28%, white);
+  background: color-mix(in srgb, var(--color-bark) 18%, var(--color-parchment));
 }
 
 .compare__fill--current {
-  background: var(--color-ownlane-green);
+  background: color-mix(in srgb, var(--color-ownlane-green) 55%, var(--color-soft-sage));
 }
 
 .compare__delta {

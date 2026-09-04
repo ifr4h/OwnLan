@@ -77,7 +77,7 @@ const ticks = computed(() => {
 }
 
 .day-rhythm__seg[data-kind='teach'] {
-  background: var(--color-ownlane-green);
+  background: var(--color-diary-paid);
 }
 
 .day-rhythm__seg[data-kind='travel'] {

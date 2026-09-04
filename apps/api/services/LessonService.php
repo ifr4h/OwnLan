@@ -453,8 +453,22 @@ class LessonService
         $org = $this->requireOrganisation();
         $lesson = $this->findOwned($id);
 
+        $notesOnly = array_keys($data) === ['instructor_notes']
+            || (count($data) === 1 && array_key_exists('instructor_notes', $data));
+
         if (!$lesson->isScheduled()) {
-            throw new BadRequestHttpException('Only scheduled lessons can be edited.');
+            // Allow private instructor notes on completed lessons; nothing else.
+            if (!($notesOnly && $lesson->status === Lesson::STATUS_COMPLETED)) {
+                throw new BadRequestHttpException('Only scheduled lessons can be edited.');
+            }
+            $lesson->instructor_notes = $this->nullableText($data['instructor_notes']);
+            $lesson->updated_at = gmdate('Y-m-d H:i:s');
+            if (!$lesson->save(true, ['instructor_notes', 'updated_at'])) {
+                throw new BadRequestHttpException($this->firstError($lesson));
+            }
+            $lesson->refresh();
+
+            return $this->toApiArray($lesson, $org);
         }
 
         if (array_key_exists('learner_id', $data)) {
@@ -476,6 +490,10 @@ class LessonService
 
         if (array_key_exists('pickup_address', $data)) {
             $lesson->pickup_address = $this->resolvePickup($data['pickup_address'], $learner, allowEmpty: true);
+        }
+
+        if (array_key_exists('instructor_notes', $data)) {
+            $lesson->instructor_notes = $this->nullableText($data['instructor_notes']);
         }
 
         $lesson->updated_at = gmdate('Y-m-d H:i:s');
@@ -1052,6 +1070,7 @@ class LessonService
             'series_id' => $lesson->series_id !== null ? (int) $lesson->series_id : null,
             'learner_name' => $learner?->fullName,
             'learner_mobile' => $learner?->mobile,
+            'learner_transmission' => $learner?->transmission,
             'starts_at' => $startsUtc->format(DATE_ATOM),
             'starts_at_local' => OrganisationTime::formatLocalIso($local),
             'starts_at_display' => OrganisationTime::formatLocalDisplay($local),

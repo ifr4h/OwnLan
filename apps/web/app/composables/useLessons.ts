@@ -49,6 +49,8 @@ export type Lesson = {
   instructor_id: number
   series_id?: number | null
   learner_name: string | null
+  learner_mobile?: string | null
+  learner_transmission?: 'manual' | 'automatic' | 'either' | string | null
   starts_at: string
   starts_at_local: string
   starts_at_display: string
@@ -85,6 +87,7 @@ export type LessonWritePayload = {
   starts_at_local: string
   duration_minutes?: number
   pickup_address?: string | null
+  instructor_notes?: string | null
   scope?: 'this' | 'this_and_future'
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DiaryGap, GapMatch } from '~/composables/useLessons'
+import type { DiaryBookPreset } from '~/components/calendar/DiaryBookPopup.vue'
 
 defineProps<{
   gap: DiaryGap | null
@@ -8,15 +9,27 @@ defineProps<{
 
 const emit = defineEmits<{
   close: []
+  book: [preset: DiaryBookPreset]
 }>()
 
-function bookMatchHref(match: GapMatch): string {
-  const q = new URLSearchParams({
-    learner_id: String(match.learner_id),
-    starts_at_local: match.suggested_starts_at_local,
-    duration_minutes: String(match.suggested_duration_minutes),
+function bookMatch(match: GapMatch) {
+  emit('book', {
+    learnerId: match.learner_id,
+    startsAtLocal: match.suggested_starts_at_local,
+    durationMinutes: match.suggested_duration_minutes,
+    pickup: match.pickup_address,
+    lockPupil: true,
   })
-  return `/lessons/new?${q.toString()}`
+  emit('close')
+}
+
+function bookGap(gap: DiaryGap) {
+  emit('book', {
+    date: gap.date,
+    startsAtLocal: gap.starts_at_local,
+    durationMinutes: gap.duration_minutes,
+  })
+  emit('close')
 }
 </script>
 
@@ -45,19 +58,19 @@ function bookMatchHref(match: GapMatch): string {
               <p class="sheet__name">{{ match.learner_name }}</p>
               <p class="sheet__reasons">{{ match.reasons.join(' · ') }}</p>
             </div>
-            <NuxtLink class="ol-btn ol-btn--sm" :to="bookMatchHref(match)" @click="emit('close')">
+            <button class="ol-btn ol-btn--sm" type="button" @click="bookMatch(match)">
               Book
-            </NuxtLink>
+            </button>
           </li>
         </ul>
 
-        <NuxtLink
+        <button
           class="ol-btn ol-btn--ghost ol-btn--sm sheet__book"
-          :to="`/lessons/new?date=${gap.date}&starts_at_local=${encodeURIComponent(gap.starts_at_local)}&duration_minutes=${gap.duration_minutes}`"
-          @click="emit('close')"
+          type="button"
+          @click="bookGap(gap)"
         >
           Book without suggestion
-        </NuxtLink>
+        </button>
       </div>
     </div>
   </Teleport>

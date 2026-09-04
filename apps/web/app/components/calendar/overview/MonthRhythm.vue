@@ -60,7 +60,7 @@ const max = computed(() => Math.max(1, ...props.bars.map(b => b.teachingMinutes)
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--color-ownlane-green);
+  background: color-mix(in srgb, var(--color-ownlane-green) 48%, var(--color-soft-sage));
   min-width: 0;
   transition: width 220ms ease;
 }

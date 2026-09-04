@@ -210,8 +210,8 @@ function cadenceLabel(cadence: string): string {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--color-ownlane-green) 18%, white);
-  color: var(--color-ownlane-green);
+  background: var(--color-parchment);
+  color: var(--color-ink-black);
   font-size: 10px;
   font-weight: 700;
 }
@@ -262,7 +262,7 @@ function cadenceLabel(cadence: string): string {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--color-ownlane-green);
+  background: color-mix(in srgb, var(--color-ownlane-green) 55%, var(--color-soft-sage));
 }
 
 .obs__test-days {

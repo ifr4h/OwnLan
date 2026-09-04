@@ -446,9 +446,10 @@
 
 .ol-chip[data-on='yes'],
 .ol-chip--on {
-  background: var(--color-ownlane-green);
-  border-color: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  background: var(--color-parchment);
+  border-color: var(--color-driftwood);
+  color: var(--color-ink-black);
+  font-weight: 600;
 }
 
 /* ——— Empty / loading ——— */

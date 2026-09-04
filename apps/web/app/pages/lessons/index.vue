@@ -89,9 +89,9 @@
           </div>
         </div>
 
-        <NuxtLink :to="bookHref" class="ol-btn ol-btn--sm toolbar__book">
+        <button class="ol-btn ol-btn--sm toolbar__book" type="button" @click="openBookPopup({ date: date })">
           Book
-        </NuxtLink>
+        </button>
       </div>
     </div>
 
@@ -115,6 +115,11 @@
     </div>
 
     <p v-if="error" class="ol-error" role="alert">{{ error }}</p>
+    <p v-else-if="slotPick && !slotPick.pendingStartsAtLocal" class="diary__pick-banner" role="status">
+      Tap a free slot to
+      {{ slotPick.kind === 'suggest' ? 'offer a new time' : 'move this lesson' }}.
+      <button type="button" class="diary__pick-cancel" @click="onCancelPickSlot">Cancel</button>
+    </p>
     <div v-else-if="loading && !diary" class="diary__skel" aria-hidden="true">
       <div class="ol-skeleton" style="height: 420px; width: 100%" />
     </div>
@@ -165,12 +170,20 @@
 
         <CalendarDiarySidePanel
           v-if="showSidePanel"
+          ref="sidePanelRef"
           :mode="panelMode"
           :lesson="selectedLesson"
+          :request="selectedRequest"
           :overview="overview"
+          :slot-pick="slotPick"
+          :flash="panelFlash"
           @close="closePanel"
-          @open-full="openLessonFull"
           @select-day="onOverviewSelectDay"
+          @changed="onAppointmentChanged"
+          @start-pick-slot="onStartPickSlot"
+          @cancel-pick-slot="onCancelPickSlot"
+          @confirm-pick-slot="onConfirmPickSlot"
+          @book-next="onBookNextFromLesson"
         />
       </div>
 
@@ -201,23 +214,34 @@
               :work-days="workDays"
               :breaks="visibleBreaks"
               :focus-type="typeFilter"
-              :select-lessons="isDesktop"
+              :select-lessons="true"
+              :booking-requests="bookingRequests"
+              :slot-pick-active="!!slotPick"
               @book="onSlotPick"
               @open-day="onOpenDay"
               @gap-open="onGapOpen"
               @break-remove="onBreakRemove"
               @select-lesson="onSelectLesson"
+              @select-request="onSelectRequest"
             />
           </div>
 
           <CalendarDiarySidePanel
             v-if="showSidePanel"
+            ref="sidePanelRef"
             :mode="panelMode"
             :lesson="selectedLesson"
+            :request="selectedRequest"
             :overview="overview"
+            :slot-pick="slotPick"
+            :flash="panelFlash"
             @close="closePanel"
-            @open-full="openLessonFull"
             @select-day="onOverviewSelectDay"
+            @changed="onAppointmentChanged"
+            @start-pick-slot="onStartPickSlot"
+            @cancel-pick-slot="onCancelPickSlot"
+            @confirm-pick-slot="onConfirmPickSlot"
+            @book-next="onBookNextFromLesson"
           />
         </div>
 
@@ -225,6 +249,14 @@
           :gap="selectedGap"
           :open="gapSheetOpen"
           @close="gapSheetOpen = false"
+          @book="openBookPopup"
+        />
+
+        <DiaryBookPopup
+          :open="bookPopupOpen"
+          :preset="bookPreset"
+          @close="closeBookPopup"
+          @booked="onBooked"
         />
 
         <Teleport to="body">
@@ -296,6 +328,39 @@
         </div>
       </div>
     </Teleport>
+    <Teleport to="body">
+      <div
+        v-if="diary && mobileLessonOpen && (selectedLesson || selectedRequest)"
+        class="overview-sheet"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="selectedRequest ? 'Lesson request' : 'Lesson'"
+      >
+        <button
+          class="overview-sheet__backdrop"
+          type="button"
+          aria-label="Close"
+          @click="closePanel"
+        />
+        <div class="overview-sheet__panel overview-sheet__panel--lesson">
+          <p v-if="panelFlash" class="overview-sheet__flash" role="status">{{ panelFlash }}</p>
+          <div class="overview-sheet__body overview-sheet__body--lesson">
+            <DiaryLessonAppointment
+              ref="mobileApptRef"
+              :lesson="selectedLesson"
+              :request="selectedRequest"
+              :slot-pick="slotPick"
+              @close="closePanel"
+              @changed="onAppointmentChanged"
+              @start-pick-slot="onStartPickSlot"
+              @cancel-pick-slot="onCancelPickSlot"
+              @confirm-pick-slot="onConfirmPickSlot"
+              @book-next="onBookNextFromLesson"
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -309,11 +374,17 @@ import {
 import CalendarDiarySidePanel from '~/components/calendar/DiarySidePanel.vue'
 import CalendarDiaryGapSheet from '~/components/calendar/DiaryGapSheet.vue'
 import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
+import type {
+  InstructorBookingRequest,
+  SlotPickState,
+} from '~/components/calendar/DiaryLessonAppointment.vue'
+import DiaryLessonAppointment from '~/components/calendar/DiaryLessonAppointment.vue'
+import DiaryBookPopup, { type DiaryBookPreset } from '~/components/calendar/DiaryBookPopup.vue'
 
 useHead({ title: 'Diary · OwnLane' })
 
 type DiaryView = 'day' | 'week' | 'month'
-type DiarySidePanelMode = 'welcome' | 'lesson'
+type DiarySidePanelMode = 'welcome' | 'lesson' | 'request'
 const VIEW_KEY = 'ownlane.diary.view'
 
 const route = useRoute()
@@ -322,6 +393,7 @@ const { fetchDiary } = useLessons()
 const { me } = useAuth()
 const { onboarding, refresh } = useOnboarding()
 const { breaksForDates, addBreak, removeBreak } = useDiaryBreaks()
+const { listPending } = useInstructorBooking()
 
 const diary = ref<DiaryResponse | null>(null)
 const { overview } = useDiaryOverview(diary)
@@ -340,8 +412,18 @@ const breakLabel = ref('Break')
 const panelOpen = ref(true)
 const panelMode = ref<DiarySidePanelMode>('welcome')
 const selectedLesson = ref<DiaryLesson | null>(null)
+const selectedRequest = ref<InstructorBookingRequest | null>(null)
 const panelDismissed = ref(false)
 const mobileOverviewOpen = ref(false)
+const mobileLessonOpen = ref(false)
+const bookingRequests = ref<InstructorBookingRequest[]>([])
+const slotPick = ref<SlotPickState>(null)
+const panelFlash = ref<string | null>(null)
+const sidePanelRef = ref<InstanceType<typeof CalendarDiarySidePanel> | null>(null)
+const mobileApptRef = ref<InstanceType<typeof DiaryLessonAppointment> | null>(null)
+const bookPopupOpen = ref(false)
+const bookPreset = ref<DiaryBookPreset | null>(null)
+let flashTimer: ReturnType<typeof setTimeout> | null = null
 
 type DiaryFocusType = 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
 const typeFilter = ref<DiaryFocusType>('all')
@@ -384,17 +466,20 @@ function onTypeFilterClickOutside(e: MouseEvent) {
 function syncPanelForViewport() {
   if (!isDesktop.value) {
     panelOpen.value = false
-    selectedLesson.value = null
-    panelMode.value = 'welcome'
+    if (panelMode.value === 'welcome') {
+      selectedLesson.value = null
+      selectedRequest.value = null
+    }
     return
   }
   mobileOverviewOpen.value = false
+  mobileLessonOpen.value = false
   // Desktop: open by default until the instructor closes it this session.
   if (!panelDismissed.value) {
     panelOpen.value = true
-    if (panelMode.value !== 'lesson') {
-      panelMode.value = 'welcome'
+    if (panelMode.value === 'welcome') {
       selectedLesson.value = null
+      selectedRequest.value = null
     }
   }
 }
@@ -402,6 +487,7 @@ function syncPanelForViewport() {
 function toggleOverviewPanel() {
   if (!isDesktop.value) {
     mobileOverviewOpen.value = !mobileOverviewOpen.value
+    mobileLessonOpen.value = false
     return
   }
   if (panelOpen.value && panelMode.value === 'welcome') {
@@ -410,35 +496,113 @@ function toggleOverviewPanel() {
   }
   panelDismissed.value = false
   selectedLesson.value = null
+  selectedRequest.value = null
   panelMode.value = 'welcome'
   panelOpen.value = true
+  slotPick.value = null
+}
+
+function openAppointmentPanel() {
+  panelDismissed.value = false
+  panelOpen.value = true
+  if (!isDesktop.value) {
+    mobileLessonOpen.value = true
+    mobileOverviewOpen.value = false
+  }
 }
 
 function onSelectLesson(lesson: DiaryLesson) {
-  if (!isDesktop.value) {
-    void navigateTo(`/lessons/${lesson.id}`)
-    return
-  }
-  panelDismissed.value = false
   selectedLesson.value = lesson
+  selectedRequest.value = null
   panelMode.value = 'lesson'
-  panelOpen.value = true
+  slotPick.value = null
+  openAppointmentPanel()
+}
+
+function onSelectRequest(request: InstructorBookingRequest) {
+  selectedRequest.value = request
+  selectedLesson.value = null
+  panelMode.value = 'request'
+  slotPick.value = null
+  openAppointmentPanel()
 }
 
 function closePanel() {
   panelOpen.value = false
   panelDismissed.value = true
   selectedLesson.value = null
+  selectedRequest.value = null
   panelMode.value = 'welcome'
-}
-
-function openLessonFull(id: number) {
-  void navigateTo(`/lessons/${id}`)
+  mobileLessonOpen.value = false
+  slotPick.value = null
 }
 
 function onOverviewSelectDay(next: string) {
   mobileOverviewOpen.value = false
   void openDay(next)
+}
+
+function setFlash(message?: string) {
+  if (flashTimer) clearTimeout(flashTimer)
+  panelFlash.value = message || null
+  if (message) {
+    flashTimer = setTimeout(() => { panelFlash.value = null }, 2800)
+  }
+}
+
+async function onAppointmentChanged(message?: string) {
+  setFlash(message)
+  slotPick.value = null
+  await load()
+  // Refresh selected lesson from reloaded diary when possible
+  if (selectedLesson.value) {
+    const id = selectedLesson.value.id
+    const next = diary.value?.lessons?.find(l => l.id === id)
+      || diary.value?.days.flatMap(d => d.lessons || []).find(l => l.id === id)
+    if (next) selectedLesson.value = next
+    else {
+      selectedLesson.value = null
+      panelMode.value = 'welcome'
+      mobileLessonOpen.value = false
+    }
+  }
+  if (selectedRequest.value) {
+    const id = selectedRequest.value.id
+    const next = bookingRequests.value.find(r => r.id === id)
+    if (next) selectedRequest.value = next
+    else {
+      selectedRequest.value = null
+      panelMode.value = 'welcome'
+      mobileLessonOpen.value = false
+    }
+  }
+}
+
+function onStartPickSlot(kind: 'move' | 'suggest') {
+  slotPick.value = { kind, pendingStartsAtLocal: null, pendingLabel: null }
+  if (!isDesktop.value) {
+    mobileLessonOpen.value = false
+  }
+}
+
+function onCancelPickSlot() {
+  slotPick.value = null
+  if (!isDesktop.value && (selectedLesson.value || selectedRequest.value)) {
+    mobileLessonOpen.value = true
+  }
+}
+
+async function onConfirmPickSlot() {
+  const pending = slotPick.value?.pendingStartsAtLocal
+  if (!pending || !slotPick.value) return
+  const kind = slotPick.value.kind
+  if (isDesktop.value) {
+    if (kind === 'move') await sidePanelRef.value?.applyMove?.(pending)
+    else await sidePanelRef.value?.applySuggest?.(pending)
+  } else {
+    if (kind === 'move') await mobileApptRef.value?.applyMove?.(pending)
+    else await mobileApptRef.value?.applySuggest?.(pending)
+  }
 }
 
 const viewOptions: DiaryView[] = ['day', 'week', 'month']
@@ -480,8 +644,6 @@ const isViewingToday = computed(() => {
   }
   return date.value === today
 })
-
-const bookHref = computed(() => `/lessons/new?date=${date.value}`)
 
 const workStart = computed(() =>
   diary.value?.work_start_time
@@ -555,6 +717,27 @@ function onGapOpen(gap: DiaryGap) {
 }
 
 function onSlotPick(payload: { date: string; starts_at_local: string; duration_minutes?: number }) {
+  if (slotPick.value) {
+    const start = payload.starts_at_local
+    const time = start.slice(11, 16)
+    const d = parseYmd(payload.date)
+    const dayLabel = d
+      ? d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+      : payload.date
+    const dur = slotPick.value.kind === 'move'
+      ? (selectedLesson.value?.duration_minutes || payload.duration_minutes || 60)
+      : (selectedRequest.value?.duration_minutes || payload.duration_minutes || 60)
+    const endMins = parseHm(time) + dur
+    const endH = String(Math.floor(endMins / 60)).padStart(2, '0')
+    const endM = String(endMins % 60).padStart(2, '0')
+    slotPick.value = {
+      kind: slotPick.value.kind,
+      pendingStartsAtLocal: start.length === 16 ? `${start}:00` : start,
+      pendingLabel: `${dayLabel} · ${time}–${endH}:${endM}`,
+    }
+    if (!isDesktop.value) mobileLessonOpen.value = true
+    return
+  }
   slotChoice.value = {
     date: payload.date,
     starts_at_local: payload.starts_at_local,
@@ -563,15 +746,47 @@ function onSlotPick(payload: { date: string; starts_at_local: string; duration_m
   breakLabel.value = 'Break'
 }
 
+function openBookPopup(preset: DiaryBookPreset = {}) {
+  gapSheetOpen.value = false
+  slotChoice.value = null
+  bookPreset.value = preset
+  bookPopupOpen.value = true
+}
+
+function closeBookPopup() {
+  bookPopupOpen.value = false
+  bookPreset.value = null
+}
+
+async function onBooked(message?: string) {
+  setFlash(message)
+  closeBookPopup()
+  closePanel()
+  await load()
+}
+
 function confirmBookLesson() {
   if (!slotChoice.value) return
-  const q = new URLSearchParams({
-    date: slotChoice.value.date,
-    starts_at_local: slotChoice.value.starts_at_local,
-    duration_minutes: String(slotChoice.value.duration_minutes),
-  })
+  const slot = slotChoice.value
   slotChoice.value = null
-  void navigateTo(`/lessons/new?${q.toString()}`)
+  openBookPopup({
+    date: slot.date,
+    startsAtLocal: slot.starts_at_local,
+    durationMinutes: slot.duration_minutes,
+  })
+}
+
+function onBookNextFromLesson() {
+  const lesson = selectedLesson.value
+  const request = selectedRequest.value
+  const learnerId = lesson?.learner_id || request?.learner_id
+  if (!learnerId) return
+  openBookPopup({
+    learnerId,
+    durationMinutes: lesson?.duration_minutes || request?.duration_minutes || undefined,
+    pickup: lesson?.pickup_address || request?.pickup_address || undefined,
+    lockPupil: true,
+  })
 }
 
 function confirmAddBreak() {
@@ -658,11 +873,14 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [result] = await Promise.all([
+    const [result, requests] = await Promise.all([
       fetchDiary(view.value, date.value),
+      listPending().catch(() => ({ items: [] as InstructorBookingRequest[] })),
       refresh(),
     ])
     diary.value = result
+    bookingRequests.value = ((requests.items || []) as InstructorBookingRequest[])
+      .filter(r => r.status === 'pending' || r.status === 'counter_proposed')
   } catch (e) {
     error.value = extractApiError(e, 'Could not load diary.')
   } finally {
@@ -692,10 +910,12 @@ onMounted(() => {
       // Phones default to day even if week/month was saved.
       const next = window.matchMedia('(max-width: 899px)').matches ? 'day' : preferred
       void router.replace({ query: { ...route.query, view: next, date: date.value } })
-      syncPanelForViewport()
-      return
     }
   }
+
+  // Always load. Do not return early after router.replace — if the restored view
+  // matches the default ("day"), [view, date] will not change and the watcher
+  // would never fetch, leaving the diary stuck on the skeleton.
   void load()
   syncPanelForViewport()
 })
@@ -710,9 +930,12 @@ watch([view, date], () => {
 })
 
 watch(view, () => {
-  if (panelMode.value === 'lesson') {
+  if (panelMode.value === 'lesson' || panelMode.value === 'request') {
     selectedLesson.value = null
+    selectedRequest.value = null
     panelMode.value = 'welcome'
+    mobileLessonOpen.value = false
+    slotPick.value = null
   }
   syncPanelForViewport()
 })
@@ -1147,8 +1370,8 @@ watch(view, () => {
 }
 
 .month__cell[data-today='yes'] {
-  background: #e7f6ee;
-  border: 2px solid var(--color-ownlane-green);
+  background: var(--color-parchment);
+  border: 1px solid var(--color-driftwood);
   padding: 7px;
 }
 
@@ -1226,7 +1449,7 @@ watch(view, () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px 16px 20px;
+  padding: 14px 16px 56px;
   border-radius: 20px 20px 0 0;
   background: var(--color-parchment);
   box-shadow: 0 -8px 32px color-mix(in srgb, var(--color-ink-black) 12%, transparent);
@@ -1237,6 +1460,11 @@ watch(view, () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.overview-sheet__head-spacer {
+  flex: 1;
 }
 
 .overview-sheet__eyebrow {
@@ -1259,12 +1487,60 @@ watch(view, () => {
   background: color-mix(in srgb, var(--color-border) 70%, transparent);
   color: var(--color-ink-black);
   cursor: pointer;
+  margin-left: auto;
 }
 
 .overview-sheet__body {
   overflow: auto;
   min-height: 0;
   padding-bottom: 8px;
+}
+
+.overview-sheet__panel--lesson {
+  max-height: min(92vh, 820px);
+  padding-bottom: 0;
+  min-height: min(72vh, 640px);
+}
+
+.overview-sheet__body--lesson {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.overview-sheet__flash {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-ownlane-green) 12%, white);
+  color: var(--color-ownlane-green);
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+}
+
+.diary__pick-banner {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-ownlane-green) 10%, var(--color-paper-white));
+  border: 1px dashed color-mix(in srgb, var(--color-ownlane-green) 35%, var(--color-border));
+  font-size: var(--text-body-sm);
+  color: var(--color-bark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.diary__pick-cancel {
+  border: none;
+  background: transparent;
+  color: var(--color-ownlane-green);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: var(--text-body-sm);
 }
 
 @media (max-width: 899px) {

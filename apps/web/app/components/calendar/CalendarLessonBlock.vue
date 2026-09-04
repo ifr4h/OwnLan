@@ -81,14 +81,16 @@ const statusClass = computed(() => {
     toneClass = 'block--cancelled'
   } else if (props.lesson.status === 'no_show') {
     toneClass = 'block--noshow'
-  } else if (props.lesson.is_current) {
-    toneClass = 'block--now'
   }
 
-  if (props.lesson.status === 'completed' && !overlapped) {
-    return `${toneClass} block--done`
+  const parts = [toneClass]
+  if (props.lesson.is_current && !overlapped && toneClass !== 'block--cancelled') {
+    parts.push('block--now')
   }
-  return toneClass
+  if (props.lesson.status === 'completed' && !overlapped) {
+    parts.push('block--done')
+  }
+  return parts.join(' ')
 })
 
 const aria = computed(() => lessonAriaLabel(props.lesson))
@@ -221,8 +223,7 @@ function onActivate(e: MouseEvent) {
 }
 
 .block--now {
-  background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  box-shadow: inset 3px 0 0 var(--color-ownlane-green);
 }
 
 .block--overlap {
@@ -312,15 +313,5 @@ function onActivate(e: MouseEvent) {
 
 .block__flag--warn {
   color: #8a6d00;
-}
-
-.block--now .block__flag--warn,
-.block--now .block__duration,
-.block--now .block__when,
-.block--now .block__place,
-.block--now .block__payment,
-.block--now .block__focus {
-  color: inherit;
-  opacity: 0.9;
 }
 </style>

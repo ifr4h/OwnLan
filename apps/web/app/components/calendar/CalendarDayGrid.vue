@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiaryDay, DiaryGap, DiaryLesson } from '~/composables/useLessons'
 import type { DiaryBreak } from '~/composables/useDiaryBreaks'
+import type { InstructorBookingRequest } from '~/components/calendar/DiaryLessonAppointment.vue'
 import {
   type GridBounds,
   blockHeight,
@@ -29,6 +30,8 @@ const props = defineProps<{
   breaks?: DiaryBreak[]
   focusType?: 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
   selectLessons?: boolean
+  bookingRequests?: InstructorBookingRequest[]
+  slotPickActive?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,6 +40,7 @@ const emit = defineEmits<{
   gapOpen: [gap: DiaryGap]
   breakRemove: [id: string]
   selectLesson: [lesson: DiaryLesson]
+  selectRequest: [request: InstructorBookingRequest]
 }>()
 
 type LessonTimed = DiaryLesson & { startMinutes: number; endMinutes: number; id: number }
@@ -63,7 +67,7 @@ const effectiveNowMinutes = computed(() => {
 })
 
 function lessonsForDay(day: DiaryDay): ReturnType<typeof layoutOverlaps<LessonTimed>> {
-  const timed: LessonTimed[] = day.lessons.map((lesson) => {
+  const timed: LessonTimed[] = (day.lessons ?? []).map((lesson) => {
     const startMinutes = parseHm(lesson.starts_at_time || lesson.starts_at_local?.slice(11, 16))
     const endMinutes = lesson.ends_at_time
       ? parseHm(lesson.ends_at_time)
@@ -85,7 +89,7 @@ function travelMarkers(day: DiaryDay) {
     height: number
     warning: NonNullable<DiaryLesson['travel_to_next']>
   }> = []
-  for (const lesson of day.lessons) {
+  for (const lesson of (day.lessons ?? [])) {
     const leg = lesson.travel_to_next
     if (!leg || !lesson.ends_at_time || leg.travel_minutes == null) continue
     const start = parseHm(lesson.ends_at_time)
@@ -125,12 +129,26 @@ function breaksForDay(date: string) {
     }))
 }
 
+function requestsForDay(date: string) {
+  return (props.bookingRequests ?? [])
+    .filter(r => (r.starts_at_local || '').slice(0, 10) === date)
+    .map((request) => {
+      const start = parseHm(request.starts_at_time || request.starts_at_local?.slice(11, 16))
+      const end = start + (request.duration_minutes || 60)
+      return {
+        request,
+        top: blockTop(start, props.bounds),
+        height: blockHeight(start, end, props.bounds),
+      }
+    })
+}
+
 function isWorkingDay(dateYmd: string): boolean {
   const days = props.workDays
-  if (!days?.length) return true
+  if (!Array.isArray(days) || !days.length) return true
   const d = new Date(`${dateYmd}T12:00:00`)
   const iso = ((d.getDay() + 6) % 7) + 1
-  return days.includes(iso)
+  return days.indexOf(iso) !== -1
 }
 
 const outsideBands = computed(() => {
@@ -327,6 +345,7 @@ watch(
     class="tg"
     :data-cols="days.length"
     :data-compact="compact ? 'yes' : 'no'"
+    :data-picking="slotPickActive ? 'yes' : 'no'"
     :style="{ '--tg-cols': Math.max(days.length, 1) }"
   >
     <div v-if="days.length > 1" class="tg__heads">
@@ -480,6 +499,23 @@ watch(
               @select="emit('selectLesson', $event)"
             />
 
+            <button
+              v-for="item in requestsForDay(day.date)"
+              :key="`req-${item.request.id}`"
+              type="button"
+              class="tg__request"
+              :style="{ top: `${item.top}px`, height: `${Math.max(item.height, 28)}px` }"
+              :aria-label="`Lesson request from ${item.request.learner_name}`"
+              @pointerdown.stop
+              @click="emit('selectRequest', item.request)"
+            >
+              <span class="tg__request-flag">Request</span>
+              <span class="tg__request-name">{{ item.request.learner_name }}</span>
+              <span v-if="item.height >= 44" class="tg__request-time">
+                {{ item.request.starts_at_time }}–{{ item.request.ends_at_time }}
+              </span>
+            </button>
+
             <div
               v-if="drag && drag.date === day.date && dragStyle()"
               class="tg__drag"
@@ -521,6 +557,11 @@ watch(
   min-height: 0;
   height: 100%;
   background: var(--color-paper-white);
+}
+
+.tg[data-picking='yes'] {
+  outline: 2px dashed color-mix(in srgb, var(--color-ownlane-green) 45%, var(--color-border));
+  outline-offset: -2px;
 }
 
 .tg__heads {
@@ -621,7 +662,7 @@ watch(
 }
 
 .tg[data-cols='7'] .tg__day[data-today='yes'] {
-  background: color-mix(in srgb, var(--color-ownlane-green) 6%, var(--color-paper-white));
+  background: var(--color-parchment);
 }
 
 .tg[data-cols='7'] .tg__day[data-today='yes'] .tg__canvas {
@@ -629,7 +670,7 @@ watch(
 }
 
 .tg[data-cols='7'] .tg__day-head[data-today='yes'] {
-  background: color-mix(in srgb, var(--color-ownlane-green) 6%, var(--color-paper-white));
+  background: var(--color-parchment);
 }
 
 .tg[data-cols='7'] .tg__dom[data-today='yes'] {
@@ -822,6 +863,55 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tg__request {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1.5px dashed color-mix(in srgb, var(--color-diary-offer-ink) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-diary-offer) 70%, white);
+  color: var(--color-diary-offer-ink);
+  cursor: pointer;
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  overflow: hidden;
+}
+
+.tg__request:hover {
+  filter: brightness(0.98);
+}
+
+.tg__request-flag {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.tg__request-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.tg__request-time {
+  font-size: 11px;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
 }
 
 .tg__dimmed {

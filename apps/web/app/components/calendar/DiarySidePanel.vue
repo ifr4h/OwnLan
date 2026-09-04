@@ -2,48 +2,59 @@
 import type { DiaryLesson } from '~/composables/useLessons'
 import type { DiaryOverviewModel } from '~/utils/diary/overviewModel'
 import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
+import DiaryLessonAppointment, {
+  type InstructorBookingRequest,
+  type SlotPickState,
+} from '~/components/calendar/DiaryLessonAppointment.vue'
 
-export type DiarySidePanelMode = 'welcome' | 'lesson'
+export type DiarySidePanelMode = 'welcome' | 'lesson' | 'request'
 
-defineProps<{
+const props = defineProps<{
   mode: DiarySidePanelMode
   lesson: DiaryLesson | null
+  request: InstructorBookingRequest | null
   overview: DiaryOverviewModel | null
+  slotPick: SlotPickState
+  flash: string | null
 }>()
 
 const emit = defineEmits<{
   close: []
-  openFull: [id: number]
   selectDay: [date: string]
+  changed: [message?: string]
+  startPickSlot: [kind: 'move' | 'suggest']
+  cancelPickSlot: []
+  confirmPickSlot: []
+  bookNext: []
 }>()
 
-function settlementLabel(lesson: DiaryLesson): string | null {
-  if (lesson.status === 'no_show' && lesson.settlement === 'waived') return 'No charge'
-  const s = lesson.settlement
-  if (!s) return null
-  if (s === 'paid') return 'Paid'
-  if (s === 'package') return 'Package'
-  if (s === 'outstanding') {
-    if (lesson.price_pence) {
-      return `£${(lesson.price_pence / 100).toFixed(0)} due`
-    }
-    return 'Unpaid'
-  }
-  return null
-}
+const appointmentRef = ref<InstanceType<typeof DiaryLessonAppointment> | null>(null)
+
+defineExpose({
+  applySuggest: (startsAtLocal: string) => appointmentRef.value?.applySuggest(startsAtLocal),
+  applyMove: (startsAtLocal: string) => appointmentRef.value?.applyMove(startsAtLocal),
+})
+
+const showAppointment = computed(() =>
+  (props.mode === 'lesson' && !!props.lesson)
+  || (props.mode === 'request' && !!props.request),
+)
 </script>
 
 <template>
   <aside
     class="panel"
-    :aria-label="mode === 'welcome' ? 'Diary overview' : 'Lesson details'"
+    :data-mode="mode"
+    :aria-label="mode === 'welcome' ? 'Diary overview' : (mode === 'request' ? 'Lesson request' : 'Lesson')"
   >
-    <div class="panel__head">
-      <p class="panel__eyebrow">{{ mode === 'welcome' ? 'Overview' : 'Lesson' }}</p>
+    <div v-if="mode === 'welcome'" class="panel__head">
+      <p class="panel__eyebrow">Overview</p>
       <button class="panel__x" type="button" aria-label="Close panel" @click="emit('close')">
         <OlIcon name="close" :size="16" />
       </button>
     </div>
+
+    <p v-if="flash" class="panel__flash" role="status">{{ flash }}</p>
 
     <div class="panel__body">
       <DiaryOverview
@@ -56,53 +67,19 @@ function settlementLabel(lesson: DiaryLesson): string | null {
         <p class="panel__quiet">Nothing to show for this period yet.</p>
       </template>
 
-      <template v-else-if="lesson">
-        <h2 class="panel__title">{{ lesson.learner_name }}</h2>
-        <p class="panel__when">
-          {{ lesson.starts_at_time }}–{{ lesson.ends_at_time }}
-          <span v-if="lesson.duration_minutes"> · {{ lesson.duration_minutes }} min</span>
-        </p>
-
-        <dl class="panel__facts">
-          <div v-if="lesson.pickup_address" class="panel__row">
-            <dt>Pickup</dt>
-            <dd>{{ lesson.pickup_address }}</dd>
-          </div>
-          <div v-if="settlementLabel(lesson)" class="panel__row">
-            <dt>Payment</dt>
-            <dd>{{ settlementLabel(lesson) }}</dd>
-          </div>
-          <div v-if="lesson.learner_last_lesson_summary" class="panel__row">
-            <dt>Last focus</dt>
-            <dd>{{ lesson.learner_last_lesson_summary }}</dd>
-          </div>
-          <div v-if="lesson.learner_next_focus" class="panel__row">
-            <dt>Next focus</dt>
-            <dd>{{ lesson.learner_next_focus }}</dd>
-          </div>
-          <div v-if="lesson.test_journey?.countdown_label" class="panel__row">
-            <dt>Test</dt>
-            <dd>{{ lesson.test_journey.countdown_label }}</dd>
-          </div>
-          <div v-if="lesson.travel_to_next?.is_warning" class="panel__row panel__row--warn">
-            <dt>Travel</dt>
-            <dd>{{ lesson.travel_to_next.message || 'Tight gap to the next lesson.' }}</dd>
-          </div>
-          <div v-if="lesson.overlaps" class="panel__row panel__row--warn">
-            <dt>Overlap</dt>
-            <dd>This booking overlaps another lesson.</dd>
-          </div>
-        </dl>
-      </template>
-    </div>
-
-    <div v-if="mode === 'lesson' && lesson" class="panel__foot">
-      <button class="ol-btn ol-btn--sm" type="button" @click="emit('openFull', lesson.id)">
-        Open full
-      </button>
-      <button class="ol-btn ol-btn--ghost ol-btn--sm" type="button" @click="emit('close')">
-        Close
-      </button>
+      <DiaryLessonAppointment
+        v-else-if="showAppointment"
+        ref="appointmentRef"
+        :lesson="lesson"
+        :request="request"
+        :slot-pick="slotPick"
+        @close="emit('close')"
+        @changed="emit('changed', $event)"
+        @start-pick-slot="emit('startPickSlot', $event)"
+        @cancel-pick-slot="emit('cancelPickSlot')"
+        @confirm-pick-slot="emit('confirmPickSlot')"
+        @book-next="emit('bookNext')"
+      />
     </div>
   </aside>
 </template>
@@ -111,15 +88,15 @@ function settlementLabel(lesson: DiaryLesson): string | null {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  padding: 18px 16px;
+  padding: 14px 16px 0;
   background: var(--color-parchment);
   color: var(--color-ink-black);
   outline: none;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .panel__head {
@@ -128,13 +105,16 @@ function settlementLabel(lesson: DiaryLesson): string | null {
   justify-content: space-between;
   gap: 8px;
   flex-shrink: 0;
+  min-height: 32px;
+  margin-bottom: 12px;
 }
 
 .panel__eyebrow {
   margin: 0;
-  font-size: var(--text-caption-mono);
-  letter-spacing: var(--tracking-caption-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  font-weight: 600;
   color: var(--color-muted);
 }
 
@@ -149,6 +129,7 @@ function settlementLabel(lesson: DiaryLesson): string | null {
   background: transparent;
   color: var(--color-muted);
   cursor: pointer;
+  margin-left: auto;
 }
 
 .panel__x:hover {
@@ -156,71 +137,33 @@ function settlementLabel(lesson: DiaryLesson): string | null {
   color: var(--color-ink-black);
 }
 
+.panel__flash {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-ownlane-green) 12%, white);
+  color: var(--color-ownlane-green);
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 .panel__body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.panel[data-mode='welcome'] .panel__body {
+  overflow: auto;
+  padding-bottom: 48px;
 }
 
 .panel__quiet {
   margin: 0;
   font-size: var(--text-body-sm);
   color: var(--color-muted);
-}
-
-.panel__title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--color-ink-black);
-}
-
-.panel__when {
-  margin: 0;
-  font-size: var(--text-body-sm);
-  color: var(--color-muted);
-  line-height: 1.45;
-  font-variant-numeric: tabular-nums;
-}
-
-.panel__facts {
-  margin: 8px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.panel__row {
-  display: grid;
-  grid-template-columns: 5.5rem 1fr;
-  gap: 8px;
-  font-size: var(--text-body-sm);
-}
-
-.panel__row dt {
-  margin: 0;
-  color: var(--color-muted);
-}
-
-.panel__row dd {
-  margin: 0;
-  color: var(--color-ink-black);
-}
-
-.panel__row--warn dd {
-  color: #8a6d00;
-}
-
-.panel__foot {
-  margin-top: auto;
-  padding-top: 14px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  border-top: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 </style>

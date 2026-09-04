@@ -100,12 +100,12 @@ function onSelect(bar: WeekDayBar) {
 .week-rhythm__fill {
   width: 100%;
   border-radius: 6px 6px 0 0;
-  background: color-mix(in srgb, var(--color-ownlane-green) 72%, white);
+  background: color-mix(in srgb, var(--color-ownlane-green) 22%, var(--color-parchment));
   transition: height 220ms ease;
 }
 
 .week-rhythm__col[data-busy='yes'] .week-rhythm__fill {
-  background: var(--color-ownlane-green);
+  background: color-mix(in srgb, var(--color-ownlane-green) 55%, var(--color-soft-sage));
 }
 
 .week-rhythm__col[data-today='yes'] .week-rhythm__label {
