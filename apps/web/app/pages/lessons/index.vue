@@ -37,59 +37,57 @@
       </div>
 
       <div class="toolbar__right">
-        <template v-if="view !== 'month'">
+        <button
+          class="ol-chip"
+          type="button"
+          :class="{ 'ol-chip--on': overviewActive }"
+          :aria-pressed="overviewActive"
+          @click="toggleOverviewPanel"
+        >
+          Overview
+        </button>
+
+        <div v-if="view !== 'month'" class="type-filter" ref="typeFilterRoot">
           <button
-            class="ol-chip"
+            class="type-filter__trigger"
             type="button"
-            :class="{ 'ol-chip--on': showSidePanel && panelMode === 'welcome' }"
-            :aria-pressed="showSidePanel && panelMode === 'welcome'"
-            @click="toggleOverviewPanel"
+            :aria-expanded="typeFilterOpen"
+            aria-haspopup="listbox"
+            aria-controls="diary-type-filter"
+            @click="typeFilterOpen = !typeFilterOpen"
           >
-            Overview
+            <span class="type-filter__dots" aria-hidden="true">
+              <i
+                v-for="dot in filterTriggerDots"
+                :key="dot"
+                class="type-filter__dot"
+                :data-tone="dot"
+              />
+            </span>
+            <span class="type-filter__label">{{ filterTriggerLabel }}</span>
           </button>
 
-          <div class="type-filter" ref="typeFilterRoot">
+          <div
+            v-if="typeFilterOpen"
+            id="diary-type-filter"
+            class="type-filter__menu"
+            role="listbox"
+            aria-label="Filter diary by type"
+          >
             <button
-              class="type-filter__trigger"
+              v-for="opt in filterOptions"
+              :key="opt.value"
+              class="type-filter__option"
               type="button"
-              :aria-expanded="typeFilterOpen"
-              aria-haspopup="listbox"
-              aria-controls="diary-type-filter"
-              @click="typeFilterOpen = !typeFilterOpen"
+              role="option"
+              :aria-selected="typeFilter === opt.value"
+              @click="selectTypeFilter(opt.value)"
             >
-              <span class="type-filter__dots" aria-hidden="true">
-                <i
-                  v-for="dot in filterTriggerDots"
-                  :key="dot"
-                  class="type-filter__dot"
-                  :data-tone="dot"
-                />
-              </span>
-              <span class="type-filter__label">{{ filterTriggerLabel }}</span>
+              <i class="type-filter__swatch" :data-tone="opt.swatch" aria-hidden="true" />
+              <span>{{ opt.label }}</span>
             </button>
-
-            <div
-              v-if="typeFilterOpen"
-              id="diary-type-filter"
-              class="type-filter__menu"
-              role="listbox"
-              aria-label="Filter diary by type"
-            >
-              <button
-                v-for="opt in filterOptions"
-                :key="opt.value"
-                class="type-filter__option"
-                type="button"
-                role="option"
-                :aria-selected="typeFilter === opt.value"
-                @click="selectTypeFilter(opt.value)"
-              >
-                <i class="type-filter__swatch" :data-tone="opt.swatch" aria-hidden="true" />
-                <span>{{ opt.label }}</span>
-              </button>
-            </div>
           </div>
-        </template>
+        </div>
 
         <NuxtLink :to="bookHref" class="ol-btn ol-btn--sm toolbar__book">
           Book
@@ -125,42 +123,55 @@
       <!-- MONTH -->
       <div
         v-if="view === 'month'"
-        class="month"
+        class="grid-wrap__main"
+        :class="{ 'grid-wrap__main--panel': showSidePanel }"
       >
-        <div class="month__dows" aria-hidden="true">
-          <span v-for="d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="d">{{ d }}</span>
+        <div class="month">
+          <div class="month__dows" aria-hidden="true">
+            <span v-for="d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="d">{{ d }}</span>
+          </div>
+          <div class="month__grid">
+            <button
+              v-for="day in diary.days"
+              :key="day.date"
+              class="month__cell"
+              type="button"
+              :data-today="day.is_today ? 'yes' : 'no'"
+              :data-out="day.in_month === false ? 'yes' : 'no'"
+              @click="openDay(day.date)"
+            >
+              <span class="month__num">{{ day.date_display }}</span>
+              <span v-if="day.lesson_count" class="month__count">
+                {{ day.lesson_count }}
+                <template v-if="(day.teaching_minutes ?? 0) > 0">
+                  · {{ hoursLabel(day.teaching_minutes!) }}
+                </template>
+              </span>
+              <span class="month__dots" aria-hidden="true">
+                <i
+                  v-for="m in (day.markers ?? []).slice(0, 4)"
+                  :key="m.id"
+                  class="month__dot"
+                  :data-status="m.status"
+                  :data-overlap="m.overlaps ? 'yes' : 'no'"
+                />
+              </span>
+              <span v-if="day.has_test" class="month__tag">Test</span>
+              <span v-else-if="day.has_overlap" class="month__tag month__tag--warn">Overlap</span>
+              <span v-else-if="day.has_cancellation" class="month__tag month__tag--muted">Cancel</span>
+            </button>
+          </div>
         </div>
-        <div class="month__grid">
-          <button
-            v-for="day in diary.days"
-            :key="day.date"
-            class="month__cell"
-            type="button"
-            :data-today="day.is_today ? 'yes' : 'no'"
-            :data-out="day.in_month === false ? 'yes' : 'no'"
-            @click="openDay(day.date)"
-          >
-            <span class="month__num">{{ day.date_display }}</span>
-            <span v-if="day.lesson_count" class="month__count">
-              {{ day.lesson_count }}
-              <template v-if="(day.teaching_minutes ?? 0) > 0">
-                · {{ hoursLabel(day.teaching_minutes!) }}
-              </template>
-            </span>
-            <span class="month__dots" aria-hidden="true">
-              <i
-                v-for="m in (day.markers ?? []).slice(0, 4)"
-                :key="m.id"
-                class="month__dot"
-                :data-status="m.status"
-                :data-overlap="m.overlaps ? 'yes' : 'no'"
-              />
-            </span>
-            <span v-if="day.has_test" class="month__tag">Test</span>
-            <span v-else-if="day.has_overlap" class="month__tag month__tag--warn">Overlap</span>
-            <span v-else-if="day.has_cancellation" class="month__tag month__tag--muted">Cancel</span>
-          </button>
-        </div>
+
+        <CalendarDiarySidePanel
+          v-if="showSidePanel"
+          :mode="panelMode"
+          :lesson="selectedLesson"
+          :overview="overview"
+          @close="closePanel"
+          @open-full="openLessonFull"
+          @select-day="onOverviewSelectDay"
+        />
       </div>
 
       <!-- DAY / WEEK TIME GRID -->
@@ -203,11 +214,10 @@
             v-if="showSidePanel"
             :mode="panelMode"
             :lesson="selectedLesson"
-            :title="pageTitle"
-            :subtitle="statsSubtitle"
-            :work-hours="workHoursLabel"
+            :overview="overview"
             @close="closePanel"
             @open-full="openLessonFull"
+            @select-day="onOverviewSelectDay"
           />
         </div>
 
@@ -250,6 +260,42 @@
         </Teleport>
       </div>
     </template>
+
+    <Teleport to="body">
+      <div
+        v-if="diary && mobileOverviewOpen && overview"
+        class="overview-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Diary overview"
+      >
+        <button
+          class="overview-sheet__backdrop"
+          type="button"
+          aria-label="Close overview"
+          @click="mobileOverviewOpen = false"
+        />
+        <div class="overview-sheet__panel">
+          <div class="overview-sheet__head">
+            <p class="overview-sheet__eyebrow">Overview</p>
+            <button
+              class="overview-sheet__x"
+              type="button"
+              aria-label="Close overview"
+              @click="mobileOverviewOpen = false"
+            >
+              <OlIcon name="close" :size="16" />
+            </button>
+          </div>
+          <div class="overview-sheet__body">
+            <DiaryOverview
+              :model="overview"
+              @select-day="onOverviewSelectDay"
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -262,6 +308,7 @@ import {
 } from '~/utils/calendar/timeGrid'
 import CalendarDiarySidePanel from '~/components/calendar/DiarySidePanel.vue'
 import CalendarDiaryGapSheet from '~/components/calendar/DiaryGapSheet.vue'
+import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
 
 useHead({ title: 'Diary · OwnLane' })
 
@@ -277,6 +324,7 @@ const { onboarding, refresh } = useOnboarding()
 const { breaksForDates, addBreak, removeBreak } = useDiaryBreaks()
 
 const diary = ref<DiaryResponse | null>(null)
+const { overview } = useDiaryOverview(diary)
 const loading = ref(true)
 const error = ref('')
 const isDesktop = ref(true)
@@ -293,6 +341,7 @@ const panelOpen = ref(true)
 const panelMode = ref<DiarySidePanelMode>('welcome')
 const selectedLesson = ref<DiaryLesson | null>(null)
 const panelDismissed = ref(false)
+const mobileOverviewOpen = ref(false)
 
 type DiaryFocusType = 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
 const typeFilter = ref<DiaryFocusType>('all')
@@ -333,13 +382,14 @@ function onTypeFilterClickOutside(e: MouseEvent) {
 }
 
 function syncPanelForViewport() {
-  if (!isDesktop.value || view.value === 'month') {
+  if (!isDesktop.value) {
     panelOpen.value = false
     selectedLesson.value = null
     panelMode.value = 'welcome'
     return
   }
-  // Desktop day/week: open by default until the instructor closes it this session.
+  mobileOverviewOpen.value = false
+  // Desktop: open by default until the instructor closes it this session.
   if (!panelDismissed.value) {
     panelOpen.value = true
     if (panelMode.value !== 'lesson') {
@@ -350,7 +400,10 @@ function syncPanelForViewport() {
 }
 
 function toggleOverviewPanel() {
-  if (!isDesktop.value) return
+  if (!isDesktop.value) {
+    mobileOverviewOpen.value = !mobileOverviewOpen.value
+    return
+  }
   if (panelOpen.value && panelMode.value === 'welcome') {
     closePanel()
     return
@@ -383,6 +436,11 @@ function openLessonFull(id: number) {
   void navigateTo(`/lessons/${id}`)
 }
 
+function onOverviewSelectDay(next: string) {
+  mobileOverviewOpen.value = false
+  void openDay(next)
+}
+
 const viewOptions: DiaryView[] = ['day', 'week', 'month']
 
 const hasAnyPupils = computed(() => {
@@ -399,7 +457,12 @@ const view = computed<DiaryView>(() => {
 })
 
 const showSidePanel = computed(() =>
-  isDesktop.value && panelOpen.value && view.value !== 'month',
+  isDesktop.value && panelOpen.value,
+)
+
+const overviewActive = computed(() =>
+  (showSidePanel.value && panelMode.value === 'welcome')
+  || (!isDesktop.value && mobileOverviewOpen.value),
 )
 
 const date = computed(() => {
@@ -455,48 +518,6 @@ const visibleBreaks = computed(() => {
   return breaksForDates(dates)
 })
 
-const statsTitle = computed(() => {
-  if (!diary.value) return ''
-  const days = view.value === 'week'
-    ? diary.value.days
-    : view.value === 'month'
-      ? diary.value.days.filter(d => d.in_month !== false)
-      : gridDays.value
-  const lessons = days.reduce((n, d) => n + d.lesson_count, 0)
-  const noun = lessons === 1 ? 'lesson' : 'lessons'
-  if (view.value === 'week') return `${lessons} ${noun} this week`
-  if (view.value === 'month') return `${lessons} ${noun} this month`
-  return `${lessons} ${noun} today`
-})
-
-const pageTitle = computed(() => statsTitle.value || 'Diary')
-
-const workHoursLabel = computed(() => `${workStart.value}–${workEnd.value}`)
-
-const statsSubtitle = computed(() => {
-  if (!diary.value) return ''
-  const days = view.value === 'week' ? diary.value.days : gridDays.value
-  const sellable = days
-    .map((d) => {
-      const mins = (d.gaps ?? [])
-        .filter(g => g.duration_minutes >= 60)
-        .reduce((n, g) => n + g.duration_minutes, 0)
-      return { date: d.date, minutes: mins }
-    })
-    .filter(d => d.minutes >= 60)
-    .sort((a, b) => b.minutes - a.minutes)
-
-  if (!sellable.length) return 'No sellable hours free in this view'
-
-  if (view.value === 'day') {
-    return `${hoursLabel(sellable[0]!.minutes)} sellable still free`
-  }
-
-  const best = sellable[0]!
-  const weekday = weekdayName(best.date)
-  return `${hoursLabel(best.minutes)} sellable still free on ${weekday}`
-})
-
 const nowMinutes = computed(() => {
   if (!diary.value?.now_time) return null
   return parseHm(diary.value.now_time)
@@ -526,12 +547,6 @@ const weekStrip = computed(() => {
 function hoursLabel(minutes: number): string {
   const h = minutes / 60
   return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`
-}
-
-function weekdayName(ymd: string): string {
-  const d = parseYmd(ymd)
-  if (!d) return ymd
-  return d.toLocaleDateString('en-GB', { weekday: 'long' })
 }
 
 function onGapOpen(gap: DiaryGap) {
@@ -695,6 +710,10 @@ watch([view, date], () => {
 })
 
 watch(view, () => {
+  if (panelMode.value === 'lesson') {
+    selectedLesson.value = null
+    panelMode.value = 'welcome'
+  }
   syncPanelForViewport()
 })
 </script>
@@ -1043,6 +1062,15 @@ watch(view, () => {
     border-radius: 0;
     border-right: 1px solid var(--color-border);
   }
+
+  .grid-wrap__main--panel .month {
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    border: none;
+    border-radius: 0;
+    border-right: 1px solid var(--color-border);
+  }
 }
 
 .grid-wrap__calendar {
@@ -1171,6 +1199,72 @@ watch(view, () => {
 
 .month__tag--muted {
   color: var(--color-muted);
+}
+
+.overview-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.overview-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: color-mix(in srgb, var(--color-ink-black) 36%, transparent);
+  cursor: pointer;
+}
+
+.overview-sheet__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  max-height: min(88vh, 720px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 20px;
+  border-radius: 20px 20px 0 0;
+  background: var(--color-parchment);
+  box-shadow: 0 -8px 32px color-mix(in srgb, var(--color-ink-black) 12%, transparent);
+}
+
+.overview-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.overview-sheet__eyebrow {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.overview-sheet__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-border) 70%, transparent);
+  color: var(--color-ink-black);
+  cursor: pointer;
+}
+
+.overview-sheet__body {
+  overflow: auto;
+  min-height: 0;
+  padding-bottom: 8px;
 }
 
 @media (max-width: 899px) {

@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import type { DiaryLesson } from '~/composables/useLessons'
+import type { DiaryOverviewModel } from '~/utils/diary/overviewModel'
+import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
 
 export type DiarySidePanelMode = 'welcome' | 'lesson'
 
 defineProps<{
   mode: DiarySidePanelMode
   lesson: DiaryLesson | null
-  title: string
-  subtitle: string
-  workHours: string
+  overview: DiaryOverviewModel | null
 }>()
 
 const emit = defineEmits<{
   close: []
   openFull: [id: number]
+  selectDay: [date: string]
 }>()
 
 function settlementLabel(lesson: DiaryLesson): string | null {
@@ -45,10 +46,14 @@ function settlementLabel(lesson: DiaryLesson): string | null {
     </div>
 
     <div class="panel__body">
-      <template v-if="mode === 'welcome'">
-        <h2 class="panel__title">{{ title || 'Diary' }}</h2>
-        <p v-if="subtitle" class="panel__sub">{{ subtitle }}</p>
-        <p v-if="workHours" class="panel__work">Work hours {{ workHours }}</p>
+      <DiaryOverview
+        v-if="mode === 'welcome' && overview"
+        :model="overview"
+        @select-day="emit('selectDay', $event)"
+      />
+
+      <template v-else-if="mode === 'welcome'">
+        <p class="panel__quiet">Nothing to show for this period yet.</p>
       </template>
 
       <template v-else-if="lesson">
@@ -106,11 +111,11 @@ function settlementLabel(lesson: DiaryLesson): string | null {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  padding: 20px 18px;
+  padding: 18px 16px;
   background: var(--color-parchment);
   color: var(--color-ink-black);
   outline: none;
@@ -159,6 +164,12 @@ function settlementLabel(lesson: DiaryLesson): string | null {
   min-height: 0;
 }
 
+.panel__quiet {
+  margin: 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+}
+
 .panel__title {
   margin: 0;
   font-size: 1.05rem;
@@ -167,16 +178,11 @@ function settlementLabel(lesson: DiaryLesson): string | null {
   color: var(--color-ink-black);
 }
 
-.panel__sub,
-.panel__work,
 .panel__when {
   margin: 0;
   font-size: var(--text-body-sm);
   color: var(--color-muted);
   line-height: 1.45;
-}
-
-.panel__when {
   font-variant-numeric: tabular-nums;
 }
 
