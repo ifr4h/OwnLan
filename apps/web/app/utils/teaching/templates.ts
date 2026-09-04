@@ -39,7 +39,7 @@ export type TemplatePack = {
 const ASPHALT = '#3a3f44'
 const ASPHALT_LIGHT = '#4a5056'
 const MARKING = '#f5f5f0'
-const ISLAND = '#EEF8E4'
+const ISLAND = '#E2F0E7'
 const GRASS = '#A8D5B5'
 
 function horizontalRoad(y: number, thickness = 90): RoadShape[] {
@@ -210,10 +210,10 @@ const PACKS: Record<string, () => RoadShape[]> = {
     { type: 'line', x1: 430, y1: 530, x2: 430, y2: 600, stroke: MARKING, strokeWidth: 6 },
     { type: 'line', x1: 570, y1: 400, x2: 570, y2: 470, stroke: MARKING, strokeWidth: 6 },
     // Light posts as small rects
-    { type: 'rect', x: 410, y: 400, w: 18, h: 36, fill: '#1E2C0F' },
-    { type: 'rect', x: 572, y: 564, w: 18, h: 36, fill: '#1E2C0F' },
-    { type: 'rect', x: 400, y: 572, w: 36, h: 18, fill: '#1E2C0F' },
-    { type: 'rect', x: 564, y: 410, w: 36, h: 18, fill: '#1E2C0F' },
+    { type: 'rect', x: 410, y: 400, w: 18, h: 36, fill: '#111118' },
+    { type: 'rect', x: 572, y: 564, w: 18, h: 36, fill: '#111118' },
+    { type: 'rect', x: 400, y: 572, w: 36, h: 18, fill: '#111118' },
+    { type: 'rect', x: 564, y: 410, w: 36, h: 18, fill: '#111118' },
   ],
 
   dual_carriageway: () => [

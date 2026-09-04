@@ -71,8 +71,8 @@ onMounted(() => {
 <style scoped>
 .share {
   min-height: 100dvh;
-  background: var(--color-chalk-green, #F7FAF4);
-  color: var(--color-ink-black, #1E2C0F);
+  background: var(--color-chalk-green, #F3F8F4);
+  color: var(--color-ink-black, #111118);
   max-width: 640px;
   margin: 0 auto;
 }
@@ -94,7 +94,7 @@ onMounted(() => {
   font-family: var(--font-martian-mono, ui-monospace, monospace);
   font-size: 11px;
   text-transform: uppercase;
-  color: var(--color-ownlane-green, #1E2C0F);
+  color: var(--color-ownlane-green, #168B55);
   margin: 0;
 }
 

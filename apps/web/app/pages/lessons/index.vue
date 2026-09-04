@@ -1,23 +1,19 @@
 <template>
-  <section class="diary ol-page ol-page--wide">
-    <header class="diary__header">
-      <div>
-        <p class="ol-eyebrow">Diary</p>
-        <h1 class="ol-page-title">Diary</h1>
-      </div>
-      <NuxtLink :to="bookHref" class="ol-btn ol-btn--sm diary__book">
-        Book lesson
-        <span aria-hidden="true">→</span>
-      </NuxtLink>
-    </header>
+  <section class="diary ol-page ol-page--full">
+    <div class="toolbar" role="toolbar" aria-label="Diary">
+      <div class="toolbar__left">
+        <div class="toolbar__nav">
+          <button class="ol-chip" type="button" :disabled="loading" aria-label="Previous" @click="shift(-1)">
+            ←
+          </button>
+          <p class="toolbar__label" aria-live="polite">{{ diary?.label || '…' }}</p>
+          <button class="ol-chip" type="button" :disabled="loading" aria-label="Next" @click="shift(1)">
+            →
+          </button>
+        </div>
 
-    <div class="toolbar" role="toolbar" aria-label="Diary navigation">
-      <div class="ol-seg toolbar__nav">
-        <button class="ol-chip" type="button" :disabled="loading" aria-label="Previous" @click="shift(-1)">
-          ←
-        </button>
         <button
-          class="ol-chip"
+          class="ol-chip toolbar__today"
           type="button"
           :class="{ 'ol-chip--on': isViewingToday }"
           :disabled="loading || isViewingToday"
@@ -25,30 +21,81 @@
         >
           Today
         </button>
-        <button class="ol-chip" type="button" :disabled="loading" aria-label="Next" @click="shift(1)">
-          →
-        </button>
+
+        <div class="ol-seg" role="group" aria-label="View">
+          <button
+            v-for="opt in viewOptions"
+            :key="opt"
+            class="ol-chip"
+            type="button"
+            :class="{ 'ol-chip--on': view === opt }"
+            @click="setView(opt)"
+          >
+            {{ opt[0]!.toUpperCase() + opt.slice(1) }}
+          </button>
+        </div>
       </div>
 
-      <p class="toolbar__label">{{ diary?.label }}</p>
+      <div class="toolbar__right">
+        <template v-if="view !== 'month'">
+          <button
+            class="ol-chip"
+            type="button"
+            :class="{ 'ol-chip--on': showSidePanel && panelMode === 'welcome' }"
+            :aria-pressed="showSidePanel && panelMode === 'welcome'"
+            @click="toggleOverviewPanel"
+          >
+            Overview
+          </button>
 
-      <div class="ol-seg" role="group" aria-label="View">
-        <button
-          v-for="opt in viewOptions"
-          :key="opt"
-          class="ol-chip"
-          type="button"
-          :class="{ 'ol-chip--on': view === opt }"
-          @click="setView(opt)"
-        >
-          {{ opt[0]!.toUpperCase() + opt.slice(1) }}
-        </button>
+          <div class="type-filter" ref="typeFilterRoot">
+            <button
+              class="type-filter__trigger"
+              type="button"
+              :aria-expanded="typeFilterOpen"
+              aria-haspopup="listbox"
+              aria-controls="diary-type-filter"
+              @click="typeFilterOpen = !typeFilterOpen"
+            >
+              <span class="type-filter__dots" aria-hidden="true">
+                <i
+                  v-for="dot in filterTriggerDots"
+                  :key="dot"
+                  class="type-filter__dot"
+                  :data-tone="dot"
+                />
+              </span>
+              <span class="type-filter__label">{{ filterTriggerLabel }}</span>
+            </button>
+
+            <div
+              v-if="typeFilterOpen"
+              id="diary-type-filter"
+              class="type-filter__menu"
+              role="listbox"
+              aria-label="Filter diary by type"
+            >
+              <button
+                v-for="opt in filterOptions"
+                :key="opt.value"
+                class="type-filter__option"
+                type="button"
+                role="option"
+                :aria-selected="typeFilter === opt.value"
+                @click="selectTypeFilter(opt.value)"
+              >
+                <i class="type-filter__swatch" :data-tone="opt.swatch" aria-hidden="true" />
+                <span>{{ opt.label }}</span>
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <NuxtLink :to="bookHref" class="ol-btn ol-btn--sm toolbar__book">
+          Book
+        </NuxtLink>
       </div>
     </div>
-
-    <p v-if="weekSummary && view === 'week'" class="week-summary" role="status">
-      {{ weekSummary }}
-    </p>
 
     <!-- Mobile date strip (day navigation) -->
     <div v-if="view !== 'month' && weekStrip.length && !isDesktop" class="strip" aria-label="Days this week">
@@ -62,24 +109,11 @@
         @click="setDate(d.date)"
       >
         <span class="strip__dow">{{ d.dow }}</span>
-        <span class="strip__dom">{{ d.dom }}</span>
+        <span
+          class="strip__dom"
+          :class="{ 'strip__dom--today': d.isToday }"
+        >{{ d.dom }}</span>
       </button>
-    </div>
-
-    <div
-      v-if="diary && (diary.overlap_count > 0 || diary.travel_warning_count > 0)"
-      class="alerts"
-    >
-      <p v-if="diary.overlap_count > 0" class="alert alert--danger">
-        <span class="ol-badge ol-badge--danger">Overlap</span>
-        {{ diary.overlap_count }} overlapping
-        {{ diary.overlap_count === 1 ? 'lesson' : 'lessons' }} — shown side-by-side on the grid.
-      </p>
-      <p v-if="diary.travel_warning_count > 0" class="alert alert--warn">
-        <span class="ol-badge ol-badge--warning">Travel</span>
-        {{ diary.travel_warning_count }}
-        {{ diary.travel_warning_count === 1 ? 'tight gap' : 'tight gaps' }} marked between lessons.
-      </p>
     </div>
 
     <p v-if="error" class="ol-error" role="alert">{{ error }}</p>
@@ -89,7 +123,10 @@
 
     <template v-else-if="diary">
       <!-- MONTH -->
-      <div v-if="view === 'month'" class="month">
+      <div
+        v-if="view === 'month'"
+        class="month"
+      >
         <div class="month__dows" aria-hidden="true">
           <span v-for="d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="d">{{ d }}</span>
         </div>
@@ -127,8 +164,8 @@
       </div>
 
       <!-- DAY / WEEK TIME GRID -->
-      <div v-else class="grid-wrap" :class="{ 'grid-wrap--day': view === 'day' }">
-        <div v-if="!hasAnyPupils" class="ol-empty">
+      <div v-else class="grid-wrap">
+        <div v-if="!hasAnyPupils" class="ol-empty ol-empty--banner">
           <h2 class="ol-empty__title">No pupils yet</h2>
           <p class="ol-empty__copy">Add or import pupils before booking lessons.</p>
           <div class="ol-empty__actions">
@@ -136,7 +173,10 @@
           </div>
         </div>
 
-        <template v-else>
+        <div
+          class="grid-wrap__main"
+          :class="{ 'grid-wrap__main--panel': showSidePanel }"
+        >
           <div class="grid-wrap__calendar">
             <CalendarDayGrid
               :days="gridDays"
@@ -144,98 +184,89 @@
               :now-minutes="nowMinutes"
               :show-now="true"
               :compact="view === 'week'"
-              :interactive="true"
+              :interactive="hasAnyPupils"
               :work-start-time="workStart"
               :work-end-time="workEnd"
               :work-days="workDays"
-              @book="onBookSlot"
-              @open-day="openDay"
+              :breaks="visibleBreaks"
+              :focus-type="typeFilter"
+              :select-lessons="isDesktop"
+              @book="onSlotPick"
+              @open-day="onOpenDay"
               @gap-open="onGapOpen"
+              @break-remove="onBreakRemove"
+              @select-lesson="onSelectLesson"
             />
-
-            <p class="ol-meta diary__hint">
-              <template v-if="isDesktop">
-                Click an empty time to book · drag to set duration
-              </template>
-              <template v-else>
-                Tap an empty time to book a lesson
-              </template>
-            </p>
           </div>
 
-          <DiaryDayContext
-            v-if="view === 'day' && isDesktop && gridDays[0]"
-            :lessons="gridDays[0].lessons"
-            :now-minutes="nowMinutes"
+          <CalendarDiarySidePanel
+            v-if="showSidePanel"
+            :mode="panelMode"
+            :lesson="selectedLesson"
+            :title="pageTitle"
+            :subtitle="statsSubtitle"
+            :work-hours="workHoursLabel"
+            @close="closePanel"
+            @open-full="openLessonFull"
           />
-        </template>
+        </div>
 
-        <DiaryGapSheet
+        <CalendarDiaryGapSheet
           :gap="selectedGap"
           :open="gapSheetOpen"
           @close="gapSheetOpen = false"
         />
 
-        <!-- Day detail: gap matches list (desktop supplement) -->
-        <section
-          v-if="view === 'day' && activeGaps.length && isDesktop"
-          class="gap-panel"
-          aria-label="Open gaps"
-        >
-          <h2 class="ol-section-title">Open gaps</h2>
-          <ul class="gap-list">
-            <li
-              v-for="gap in activeGaps"
-              :key="`${gap.previous_lesson_id}-${gap.next_lesson_id}`"
-              class="ol-panel gap-item"
-            >
-              <div class="gap-item__header">
-                <p class="gap-item__title">{{ gap.label }}</p>
-                <p class="ol-meta">
-                  {{ gap.starts_at_display }}–{{ gap.ends_at_display }}
-                </p>
-                <p v-if="gap.matches.length" class="gap-item__summary">
-                  {{ gap.matches.length }}
-                  {{ gap.matches.length === 1 ? 'pupil could fit here' : 'pupils could fit here' }}
-                </p>
-                <p v-else class="gap-item__summary gap-item__summary--quiet">
-                  No pupils match this gap yet
-                </p>
+        <Teleport to="body">
+          <div
+            v-if="slotChoice"
+            class="slot-choice"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add to diary"
+          >
+            <button class="slot-choice__backdrop" type="button" aria-label="Close" @click="slotChoice = null" />
+            <div class="slot-choice__panel">
+              <p class="slot-choice__title">Add to this slot</p>
+              <p class="slot-choice__meta">
+                {{ slotChoice.starts_at_local.slice(11, 16) }}
+                ·
+                {{ slotChoice.duration_minutes || 60 }} minutes
+              </p>
+              <div class="slot-choice__actions">
+                <button class="ol-btn ol-btn--block" type="button" @click="confirmBookLesson">
+                  Book lesson
+                </button>
               </div>
-              <ul v-if="gap.matches.length" class="gap-matches">
-                <li
-                  v-for="match in gap.matches"
-                  :key="`${gap.previous_lesson_id}-${match.learner_id}`"
-                  class="gap-match"
-                >
-                  <div class="gap-match__main">
-                    <p class="gap-match__name">{{ match.learner_name }}</p>
-                    <p class="gap-match__reasons">{{ match.reasons.join(' · ') }}</p>
-                  </div>
-                  <NuxtLink class="ol-btn ol-btn--sm" :to="bookMatchHref(match)">
-                    Book
-                  </NuxtLink>
-                </li>
-              </ul>
-            </li>
-          </ul>
-        </section>
+              <label class="ol-field slot-choice__label">
+                <span class="ol-field__label">Or add a break</span>
+                <input v-model="breakLabel" class="ol-input" type="text" maxlength="40" placeholder="School run">
+              </label>
+              <button class="ol-btn ol-btn--ghost ol-btn--block" type="button" @click="confirmAddBreak">
+                Add break
+              </button>
+            </div>
+          </div>
+        </Teleport>
       </div>
     </template>
   </section>
 </template>
 
 <script setup lang="ts">
-import type { DiaryGap, DiaryResponse, GapMatch } from '~/composables/useLessons'
+import type { DiaryGap, DiaryLesson, DiaryResponse } from '~/composables/useLessons'
 import {
   parseHm,
-  resolveGridBounds,
+  fullDayGridBounds,
   type GridBounds,
 } from '~/utils/calendar/timeGrid'
+import CalendarDiarySidePanel from '~/components/calendar/DiarySidePanel.vue'
+import CalendarDiaryGapSheet from '~/components/calendar/DiaryGapSheet.vue'
 
 useHead({ title: 'Diary · OwnLane' })
 
 type DiaryView = 'day' | 'week' | 'month'
+type DiarySidePanelMode = 'welcome' | 'lesson'
 const VIEW_KEY = 'ownlane.diary.view'
 
 const route = useRoute()
@@ -243,6 +274,7 @@ const router = useRouter()
 const { fetchDiary } = useLessons()
 const { me } = useAuth()
 const { onboarding, refresh } = useOnboarding()
+const { breaksForDates, addBreak, removeBreak } = useDiaryBreaks()
 
 const diary = ref<DiaryResponse | null>(null)
 const loading = ref(true)
@@ -250,10 +282,115 @@ const error = ref('')
 const isDesktop = ref(true)
 const gapSheetOpen = ref(false)
 const selectedGap = ref<DiaryGap | null>(null)
+const slotChoice = ref<{
+  date: string
+  starts_at_local: string
+  duration_minutes: number
+} | null>(null)
+const breakLabel = ref('Break')
+
+const panelOpen = ref(true)
+const panelMode = ref<DiarySidePanelMode>('welcome')
+const selectedLesson = ref<DiaryLesson | null>(null)
+const panelDismissed = ref(false)
+
+type DiaryFocusType = 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
+const typeFilter = ref<DiaryFocusType>('all')
+const typeFilterOpen = ref(false)
+const typeFilterRoot = ref<HTMLElement | null>(null)
+
+const filterOptions: Array<{ value: DiaryFocusType; label: string; swatch: string }> = [
+  { value: 'all', label: 'All types', swatch: 'all' },
+  { value: 'paid', label: 'Paid', swatch: 'paid' },
+  { value: 'unpaid', label: 'Unpaid', swatch: 'unpaid' },
+  { value: 'package', label: 'Block', swatch: 'package' },
+  { value: 'break', label: 'Break', swatch: 'break' },
+  { value: 'offer', label: 'Offer', swatch: 'offer' },
+]
+
+const filterTriggerDots = computed(() => {
+  if (typeFilter.value === 'all') return ['paid', 'unpaid', 'package', 'break']
+  if (typeFilter.value === 'package') return ['package']
+  return [typeFilter.value]
+})
+
+const filterTriggerLabel = computed(() => {
+  if (typeFilter.value === 'all') return 'All types'
+  return filterOptions.find(o => o.value === typeFilter.value)?.label ?? 'Filter'
+})
+
+function selectTypeFilter(next: DiaryFocusType) {
+  typeFilter.value = next
+  typeFilterOpen.value = false
+}
+
+function onTypeFilterClickOutside(e: MouseEvent) {
+  if (!typeFilterOpen.value) return
+  const root = typeFilterRoot.value
+  if (root && !root.contains(e.target as Node)) {
+    typeFilterOpen.value = false
+  }
+}
+
+function syncPanelForViewport() {
+  if (!isDesktop.value || view.value === 'month') {
+    panelOpen.value = false
+    selectedLesson.value = null
+    panelMode.value = 'welcome'
+    return
+  }
+  // Desktop day/week: open by default until the instructor closes it this session.
+  if (!panelDismissed.value) {
+    panelOpen.value = true
+    if (panelMode.value !== 'lesson') {
+      panelMode.value = 'welcome'
+      selectedLesson.value = null
+    }
+  }
+}
+
+function toggleOverviewPanel() {
+  if (!isDesktop.value) return
+  if (panelOpen.value && panelMode.value === 'welcome') {
+    closePanel()
+    return
+  }
+  panelDismissed.value = false
+  selectedLesson.value = null
+  panelMode.value = 'welcome'
+  panelOpen.value = true
+}
+
+function onSelectLesson(lesson: DiaryLesson) {
+  if (!isDesktop.value) {
+    void navigateTo(`/lessons/${lesson.id}`)
+    return
+  }
+  panelDismissed.value = false
+  selectedLesson.value = lesson
+  panelMode.value = 'lesson'
+  panelOpen.value = true
+}
+
+function closePanel() {
+  panelOpen.value = false
+  panelDismissed.value = true
+  selectedLesson.value = null
+  panelMode.value = 'welcome'
+}
+
+function openLessonFull(id: number) {
+  void navigateTo(`/lessons/${id}`)
+}
 
 const viewOptions: DiaryView[] = ['day', 'week', 'month']
 
-const hasAnyPupils = computed(() => (onboarding.value?.pupil_count ?? 0) > 0)
+const hasAnyPupils = computed(() => {
+  if ((onboarding.value?.pupil_count ?? 0) > 0) return true
+  // Fall back to diary payload so a stale onboarding count can't blank the grid
+  return (diary.value?.lessons?.length ?? 0) > 0
+    || (diary.value?.days ?? []).some(d => d.lesson_count > 0)
+})
 
 const view = computed<DiaryView>(() => {
   const q = route.query.view
@@ -261,13 +398,25 @@ const view = computed<DiaryView>(() => {
   return 'day'
 })
 
+const showSidePanel = computed(() =>
+  isDesktop.value && panelOpen.value && view.value !== 'month',
+)
+
 const date = computed(() => {
   const q = route.query.date
   if (typeof q === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q)) return q
   return localToday()
 })
 
-const isViewingToday = computed(() => date.value === localToday())
+const isViewingToday = computed(() => {
+  const today = localToday()
+  if (view.value === 'day') return date.value === today
+  // Week / month: “today” means the loaded range includes today
+  if (diary.value?.days?.length) {
+    return diary.value.days.some(d => d.is_today || d.date === today)
+  }
+  return date.value === today
+})
 
 const bookHref = computed(() => `/lessons/new?date=${date.value}`)
 
@@ -290,47 +439,68 @@ const workDays = computed(() =>
 
 const gridDays = computed(() => {
   if (!diary.value) return []
+  // Desktop week = seven day columns in one row.
   if (view.value === 'week' && isDesktop.value) return diary.value.days
   const match = diary.value.days.find(d => d.date === date.value)
   return match ? [match] : diary.value.days.slice(0, 1)
 })
 
 const bounds = computed<GridBounds>(() => {
-  const lessons = gridDays.value.flatMap(d => d.lessons)
-  const b = resolveGridBounds({
-    workStart: workStart.value,
-    workEnd: workEnd.value,
-    lessonStarts: lessons.map(l => l.starts_at_time),
-    lessonEnds: lessons.map(l => l.ends_at_time),
-    padMinutes: 30,
-  })
-  // Day view gets taller hours for readability; week stays dense but proportional.
-  b.pxPerMinute = view.value === 'day' ? 2 : 1.15
-  return b
+  // Full midnight–midnight day. Work hours only shade the outside bands.
+  return fullDayGridBounds(view.value === 'day' ? 1.35 : 0.95)
 })
 
-const weekSummary = computed(() => {
-  if (!diary.value || view.value !== 'week') return ''
-  const days = diary.value.days
+const visibleBreaks = computed(() => {
+  const dates = gridDays.value.map(d => d.date)
+  return breaksForDates(dates)
+})
+
+const statsTitle = computed(() => {
+  if (!diary.value) return ''
+  const days = view.value === 'week'
+    ? diary.value.days
+    : view.value === 'month'
+      ? diary.value.days.filter(d => d.in_month !== false)
+      : gridDays.value
   const lessons = days.reduce((n, d) => n + d.lesson_count, 0)
-  const minutes = days.reduce((n, d) => n + (d.teaching_minutes ?? 0), 0)
-  const gaps = days.flatMap(d => d.gaps ?? []).filter(g => g.duration_minutes >= 60)
-  const gapMinutes = gaps.reduce((n, g) => n + g.duration_minutes, 0)
-  const parts: string[] = []
-  parts.push(`${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}`)
-  if (minutes > 0) parts.push(hoursLabel(minutes) + ' teaching')
-  if (gapMinutes >= 60) parts.push(hoursLabel(gapMinutes) + ' sellable capacity')
-  return parts.join(' · ')
+  const noun = lessons === 1 ? 'lesson' : 'lessons'
+  if (view.value === 'week') return `${lessons} ${noun} this week`
+  if (view.value === 'month') return `${lessons} ${noun} this month`
+  return `${lessons} ${noun} today`
+})
+
+const pageTitle = computed(() => statsTitle.value || 'Diary')
+
+const workHoursLabel = computed(() => `${workStart.value}–${workEnd.value}`)
+
+const statsSubtitle = computed(() => {
+  if (!diary.value) return ''
+  const days = view.value === 'week' ? diary.value.days : gridDays.value
+  const sellable = days
+    .map((d) => {
+      const mins = (d.gaps ?? [])
+        .filter(g => g.duration_minutes >= 60)
+        .reduce((n, g) => n + g.duration_minutes, 0)
+      return { date: d.date, minutes: mins }
+    })
+    .filter(d => d.minutes >= 60)
+    .sort((a, b) => b.minutes - a.minutes)
+
+  if (!sellable.length) return 'No sellable hours free in this view'
+
+  if (view.value === 'day') {
+    return `${hoursLabel(sellable[0]!.minutes)} sellable still free`
+  }
+
+  const best = sellable[0]!
+  const weekday = weekdayName(best.date)
+  return `${hoursLabel(best.minutes)} sellable still free on ${weekday}`
 })
 
 const nowMinutes = computed(() => {
   if (!diary.value?.now_time) return null
   return parseHm(diary.value.now_time)
 })
-
-const activeGaps = computed(() =>
-  (diary.value?.days[0]?.gaps ?? []).filter(g => g.duration_minutes >= 60),
-)
 
 const weekStrip = computed(() => {
   // Build Mon–Sun around current date for mobile strip.
@@ -358,27 +528,50 @@ function hoursLabel(minutes: number): string {
   return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`
 }
 
+function weekdayName(ymd: string): string {
+  const d = parseYmd(ymd)
+  if (!d) return ymd
+  return d.toLocaleDateString('en-GB', { weekday: 'long' })
+}
+
 function onGapOpen(gap: DiaryGap) {
   selectedGap.value = gap
   gapSheetOpen.value = true
 }
 
-function bookMatchHref(match: GapMatch): string {
-  const q = new URLSearchParams({
-    learner_id: String(match.learner_id),
-    starts_at_local: match.suggested_starts_at_local,
-    duration_minutes: String(match.suggested_duration_minutes),
-  })
-  return `/lessons/new?${q.toString()}`
-}
-
-function onBookSlot(payload: { date: string; starts_at_local: string; duration_minutes?: number }) {
-  const q = new URLSearchParams({
+function onSlotPick(payload: { date: string; starts_at_local: string; duration_minutes?: number }) {
+  slotChoice.value = {
     date: payload.date,
     starts_at_local: payload.starts_at_local,
+    duration_minutes: payload.duration_minutes || 60,
+  }
+  breakLabel.value = 'Break'
+}
+
+function confirmBookLesson() {
+  if (!slotChoice.value) return
+  const q = new URLSearchParams({
+    date: slotChoice.value.date,
+    starts_at_local: slotChoice.value.starts_at_local,
+    duration_minutes: String(slotChoice.value.duration_minutes),
   })
-  if (payload.duration_minutes) q.set('duration_minutes', String(payload.duration_minutes))
+  slotChoice.value = null
   void navigateTo(`/lessons/new?${q.toString()}`)
+}
+
+function confirmAddBreak() {
+  if (!slotChoice.value) return
+  addBreak({
+    date: slotChoice.value.date,
+    starts_at_local: slotChoice.value.starts_at_local,
+    duration_minutes: slotChoice.value.duration_minutes,
+    label: breakLabel.value,
+  })
+  slotChoice.value = null
+}
+
+function onBreakRemove(id: string) {
+  removeBreak(id)
 }
 
 function localToday(): string {
@@ -421,6 +614,15 @@ async function setDate(next: string) {
   await router.replace({ query: { ...route.query, date: next, view: view.value } })
 }
 
+/** Month cells open day view. Week day headers only move the focused date. */
+async function onOpenDay(next: string) {
+  if (view.value === 'week') {
+    await setDate(next)
+    return
+  }
+  await router.replace({ query: { view: 'day', date: next } })
+}
+
 async function openDay(next: string) {
   await router.replace({ query: { view: 'day', date: next } })
 }
@@ -459,11 +661,13 @@ function syncDesktop() {
   if (!desktop && view.value === 'week') {
     void router.replace({ query: { ...route.query, view: 'day', date: date.value } })
   }
+  syncPanelForViewport()
 }
 
 onMounted(() => {
   syncDesktop()
   window.addEventListener('resize', syncDesktop)
+  document.addEventListener('pointerdown', onTypeFilterClickOutside)
 
   // Restore preferred view if URL has no view (and not forced by mobile).
   if (!route.query.view && import.meta.client) {
@@ -473,45 +677,82 @@ onMounted(() => {
       // Phones default to day even if week/month was saved.
       const next = window.matchMedia('(max-width: 899px)').matches ? 'day' : preferred
       void router.replace({ query: { ...route.query, view: next, date: date.value } })
+      syncPanelForViewport()
       return
     }
   }
   void load()
+  syncPanelForViewport()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', syncDesktop)
+  document.removeEventListener('pointerdown', onTypeFilterClickOutside)
 })
 
 watch([view, date], () => {
   void load()
 })
+
+watch(view, () => {
+  syncPanelForViewport()
+})
 </script>
 
 <style scoped>
-.diary__header {
+.toolbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
-.toolbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+.toolbar__left,
+.toolbar__right {
+  display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.toolbar__left {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+}
+
+.toolbar__right {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.toolbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .toolbar__label {
   margin: 0;
+  min-width: 0;
+  max-width: 14rem;
   text-align: center;
   font-size: var(--text-body-sm);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-ink-black);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.toolbar__today:disabled {
+  opacity: 0.45;
+}
+
+.toolbar__book {
+  flex-shrink: 0;
 }
 
 .week-summary {
@@ -520,75 +761,249 @@ watch([view, date], () => {
   color: var(--color-muted);
 }
 
+.type-filter {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.type-filter__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-paper-white);
+  color: var(--color-ink-black);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.type-filter__trigger:hover {
+  border-color: var(--color-border-strong);
+}
+
+.type-filter__dots {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 2px;
+}
+
+.type-filter__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-paper-white);
+  margin-left: -4px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-ink-black) 8%, transparent);
+}
+
+.type-filter__dot:first-child {
+  margin-left: 0;
+}
+
+.type-filter__dot[data-tone='paid'],
+.type-filter__swatch[data-tone='paid'] {
+  background: var(--color-diary-paid);
+}
+
+.type-filter__dot[data-tone='unpaid'],
+.type-filter__swatch[data-tone='unpaid'] {
+  background: var(--color-diary-unpaid);
+}
+
+.type-filter__dot[data-tone='package'],
+.type-filter__swatch[data-tone='package'] {
+  background: var(--color-diary-block);
+}
+
+.type-filter__dot[data-tone='break'],
+.type-filter__swatch[data-tone='break'] {
+  background: var(--color-diary-break);
+}
+
+.type-filter__dot[data-tone='offer'],
+.type-filter__swatch[data-tone='offer'] {
+  background: var(--color-diary-offer);
+  box-shadow: inset 0 0 0 1px dashed var(--color-diary-offer-ink);
+}
+
+.type-filter__label {
+  white-space: nowrap;
+}
+
+.type-filter__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: auto;
+  right: 0;
+  z-index: 20;
+  min-width: 168px;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-paper-white);
+  box-shadow: 0 12px 28px rgba(32, 21, 21, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.type-filter__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-black);
+  font: inherit;
+  font-size: var(--text-body-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.type-filter__option:hover,
+.type-filter__option[aria-selected='true'] {
+  background: var(--color-parchment);
+}
+
+.type-filter__swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.type-filter__swatch[data-tone='all'] {
+  background:
+    conic-gradient(
+      var(--color-diary-paid) 0 90deg,
+      var(--color-diary-unpaid) 90deg 180deg,
+      var(--color-diary-block) 180deg 270deg,
+      var(--color-diary-break) 270deg 360deg
+    );
+}
+
+.type-filter__swatch[data-tone='break'] {
+  border-radius: 999px;
+}
+
+.slot-choice {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+}
+
+.slot-choice__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(32, 21, 21, 0.28);
+  cursor: pointer;
+}
+
+.slot-choice__panel {
+  position: relative;
+  width: min(100%, 360px);
+  margin-bottom: max(8px, env(safe-area-inset-bottom));
+  padding: 18px 16px 16px;
+  border-radius: 16px;
+  background: var(--color-paper-white, #fffefb);
+  border: 1px solid var(--color-border, #ececec);
+  box-shadow: 0 12px 40px rgba(32, 21, 21, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.slot-choice__title {
+  margin: 0;
+  font-size: var(--text-body);
+  font-weight: 650;
+}
+
+.slot-choice__meta {
+  margin: -6px 0 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+}
+
+.slot-choice__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slot-choice__label {
+  margin: 0;
+}
+
+@media (min-width: 720px) {
+  .slot-choice {
+    place-items: center;
+  }
+
+  .slot-choice__panel {
+    margin-bottom: 0;
+  }
+}
+
 .strip {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  gap: 0;
+  padding: 4px 0 8px;
 }
 
 .strip__day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: var(--surface-card);
-  min-height: 52px;
+  gap: 4px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  min-height: 48px;
 }
 
-.strip__day[data-on='yes'] {
-  background: var(--color-success-wash);
-  border-color: rgba(22, 139, 85, 0.35);
+.strip__day[data-on='yes'] .strip__dom:not(.strip__dom--today) {
+  background: #f2f2f7;
 }
 
 .strip__dow {
-  font-size: 10px;
-  color: var(--color-muted);
-  text-transform: uppercase;
+  font-size: 11px;
+  color: #8e8e93;
+  text-transform: none;
+  font-weight: 500;
 }
 
 .strip__dom {
-  font-size: 15px;
+  font-size: 17px;
   font-variant-numeric: tabular-nums;
-}
-
-.strip__day[data-today='yes'] .strip__dom {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  color: var(--color-ink-black);
+}
+
+.strip__day[data-today='yes'] .strip__dom {
   background: var(--color-ownlane-green);
   color: white;
-  font-size: 13px;
-}
-
-.alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.alert {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: var(--text-meta);
-}
-
-.alert--danger {
-  background: var(--color-danger-wash);
-}
-
-.alert--warn {
-  background: var(--color-warning-wash);
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .grid-wrap {
@@ -596,112 +1011,70 @@ watch([view, date], () => {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  width: 100%;
 }
 
-.grid-wrap--day {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+.grid-wrap__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .grid-wrap__main--panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+    gap: 0;
+    align-items: stretch;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-cards);
+    overflow: hidden;
+    background: var(--color-paper-white);
+    height: max(420px, calc(100dvh - 11.5rem));
+    min-height: 420px;
+  }
+
+  .grid-wrap__main--panel .grid-wrap__calendar {
+    height: 100%;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    border-right: 1px solid var(--color-border);
+  }
 }
 
 .grid-wrap__calendar {
   min-width: 0;
+  width: 100%;
+  flex: 1 1 auto;
+  height: max(420px, calc(100dvh - 11.5rem));
+  min-height: 420px;
+  background: var(--color-paper-white);
+  border-radius: var(--radius-cards);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
 }
 
-@media (min-width: 1100px) {
-  .grid-wrap--day {
-    grid-template-columns: minmax(0, 1fr) 280px;
-    align-items: start;
-  }
+.grid-wrap__calendar :deep(.tg) {
+  flex: 1;
+  min-height: 0;
 }
 
 .diary__hint {
-  text-align: center;
-}
-
-.gap-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.gap-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.gap-item {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-}
-
-.gap-item__header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.gap-item__title {
-  font-size: var(--text-body-sm);
-  font-weight: 600;
-}
-
-.gap-item__summary {
-  margin: 0;
-  font-size: var(--text-body-sm);
-  color: var(--color-ownlane-green);
-  font-weight: 500;
-}
-
-.gap-item__summary--quiet {
-  color: var(--color-muted);
-  font-weight: 400;
-}
-
-.gap-matches {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--color-border);
-  padding-top: 10px;
-}
-
-.gap-match {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.gap-match__main {
-  min-width: 0;
-}
-
-.gap-match__name {
-  margin: 0;
-  font-size: var(--text-body-sm);
-  font-weight: 500;
-}
-
-.gap-match__reasons {
-  margin: 2px 0 0;
-  font-size: var(--text-caption);
-  color: var(--color-muted);
+  display: none;
 }
 
 .month {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--surface-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 16px;
   padding: 12px;
 }
 
@@ -710,10 +1083,11 @@ watch([view, date], () => {
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   font-size: 11px;
-  color: var(--color-muted);
+  color: #8e8e93;
   text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
 }
 
 .month__grid {
@@ -729,25 +1103,25 @@ watch([view, date], () => {
   align-items: flex-start;
   gap: 4px;
   padding: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: #fbfdfc;
+  border: none;
+  border-radius: 12px;
+  background: #fafafa;
   text-align: left;
-  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+  transition: background-color var(--duration-fast) ease;
 }
 
 .month__cell:hover {
-  border-color: #c5dccf;
-  background: white;
+  background: #f2f2f7;
 }
 
 .month__cell[data-out='yes'] {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .month__cell[data-today='yes'] {
-  border-color: var(--color-ownlane-green);
-  background: var(--color-success-wash);
+  background: #e7f6ee;
+  border: 2px solid var(--color-ownlane-green);
+  padding: 7px;
 }
 
 .month__num {
@@ -800,16 +1174,26 @@ watch([view, date], () => {
 }
 
 @media (max-width: 899px) {
-  .diary__book {
-    display: none;
+  .toolbar {
+    flex-wrap: wrap;
   }
 
-  .toolbar {
-    grid-template-columns: 1fr;
+  .toolbar__left,
+  .toolbar__right {
+    flex-wrap: wrap;
+  }
+
+  .toolbar__right {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .toolbar__label {
-    order: -1;
+    max-width: 10rem;
+  }
+
+  .toolbar__book {
+    margin-left: auto;
   }
 
   .month__cell {

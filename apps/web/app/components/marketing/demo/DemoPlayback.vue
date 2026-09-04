@@ -4,10 +4,10 @@
       <div class="playback-demo__map" role="img" aria-label="Lesson route map with marked moment">
         <svg viewBox="0 0 360 200" class="playback-demo__svg">
           <rect width="360" height="200" fill="#e8efe9" />
-          <path d="M40 160 Q120 40 200 100 T320 60" stroke="#C1F48F" stroke-width="4" fill="none" stroke-linecap="round" />
+          <path d="M40 160 Q120 40 200 100 T320 60" stroke="#168B55" stroke-width="4" fill="none" stroke-linecap="round" />
           <circle cx="200" cy="100" r="10" fill="#ff4141" stroke="#fff" stroke-width="2" />
-          <circle cx="40" cy="160" r="6" fill="#C1F48F" />
-          <circle cx="320" cy="60" r="6" fill="#C1F48F" />
+          <circle cx="40" cy="160" r="6" fill="#168B55" />
+          <circle cx="320" cy="60" r="6" fill="#168B55" />
         </svg>
       </div>
       <div class="playback-demo__timeline">

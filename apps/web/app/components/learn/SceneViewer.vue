@@ -120,13 +120,13 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject) {
   if (kind === 'learner_car' || kind === 'other_car' || kind === 'bus') {
     const w = kind === 'bus' ? 44 : 36
     const h = kind === 'bus' ? 70 : 56
-    ctx.fillStyle = kind === 'learner_car' ? '#1E2C0F' : kind === 'bus' ? '#ffda00' : '#1E2C0F'
+    ctx.fillStyle = kind === 'learner_car' ? '#111118' : kind === 'bus' ? '#ffda00' : '#111118'
     roundRect(ctx, -w / 2, -h / 2, w, h, 8)
     ctx.fill()
-    ctx.fillStyle = kind === 'other_car' ? '#fff' : '#EEF8E4'
+    ctx.fillStyle = kind === 'other_car' ? '#fff' : '#E2F0E7'
     ctx.fillRect(-w / 2 + 6, -h / 2 + 8, w - 12, 14)
   } else if (kind === 'bike') {
-    ctx.strokeStyle = '#1E2C0F'
+    ctx.strokeStyle = '#111118'
     ctx.lineWidth = 3
     ctx.beginPath()
     ctx.arc(-14, 10, 12, 0, Math.PI * 2)
@@ -138,16 +138,16 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject) {
     ctx.lineTo(14, 10)
     ctx.stroke()
   } else if (kind === 'pedestrian') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     ctx.beginPath()
     ctx.arc(0, -14, 8, 0, Math.PI * 2)
     ctx.fill()
     ctx.fillRect(-7, -4, 14, 28)
   } else if (kind === 'traffic_light') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     roundRect(ctx, -12, -28, 24, 56, 6)
     ctx.fill()
-    ;['#ff4141', '#ffda00', '#C1F48F'].forEach((c, i) => {
+    ;['#ff4141', '#ffda00', '#16ab59'].forEach((c, i) => {
       ctx.fillStyle = c
       ctx.beginPath()
       ctx.arc(0, -16 + i * 16, 6, 0, Math.PI * 2)
@@ -178,7 +178,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject) {
     ctx.textBaseline = 'middle'
     ctx.fillText('STOP', 0, 1)
   } else if (kind === 'arrow') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     ctx.beginPath()
     ctx.moveTo(0, -28)
     ctx.lineTo(16, 8)
@@ -196,7 +196,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject) {
       const tw = ctx.measureText(obj.label).width
       roundRect(ctx, -tw / 2 - 12, -18, tw + 24, 36, 10)
       ctx.fill()
-      ctx.fillStyle = '#1E2C0F'
+      ctx.fillStyle = '#111118'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(obj.label, 0, 1)
@@ -208,7 +208,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject) {
       ctx.lineTo(-24, 22)
       ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = '#1E2C0F'
+      ctx.fillStyle = '#111118'
       ctx.font = 'bold 22px Manrope, sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -236,7 +236,7 @@ function paint() {
   const oy = (cssH - LOGICAL * scale) / 2
 
   ctx.clearRect(0, 0, cssW, cssH)
-  ctx.fillStyle = '#EEF8E4'
+  ctx.fillStyle = '#E2F0E7'
   ctx.fillRect(0, 0, cssW, cssH)
 
   ctx.save()

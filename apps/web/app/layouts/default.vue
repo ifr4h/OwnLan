@@ -1,17 +1,39 @@
 <template>
-  <div class="app" :data-quick="quickOpen ? 'open' : 'closed'">
+  <div
+    class="app"
+    :data-quick="quickOpen ? 'open' : 'closed'"
+    :data-sidebar="sidebarCollapsed ? 'collapsed' : 'expanded'"
+  >
     <SyncStatus />
 
     <!-- Desktop sidebar -->
     <aside class="app__sidebar" aria-label="Primary">
-      <NuxtLink to="/today" class="app__brand">
-        <OlBrand />
-      </NuxtLink>
+      <div class="app__side-top">
+        <NuxtLink to="/today" class="app__brand" :title="sidebarCollapsed ? 'OwnLane' : undefined">
+          <OlBrand :compact="sidebarCollapsed" :show-wordmark="!sidebarCollapsed" />
+        </NuxtLink>
+
+        <button
+          class="app__collapse"
+          type="button"
+          :aria-label="sidebarCollapsed ? 'Expand menu' : 'Collapse menu'"
+          :aria-expanded="!sidebarCollapsed"
+          :title="sidebarCollapsed ? 'Expand menu' : 'Collapse menu'"
+          @click="toggleSidebar"
+        >
+          <OlIcon name="chevron-right" :size="16" class="app__collapse-icon" />
+        </button>
+      </div>
 
       <nav class="app__side-nav">
-        <button class="app__side-link app__search-btn" type="button" @click="openSearch">
+        <button
+          class="app__side-link app__search-btn"
+          type="button"
+          title="Search"
+          @click="openSearch"
+        >
           <OlIcon name="search" :size="20" />
-          <span>Search</span>
+          <span class="app__side-label">Search</span>
           <kbd class="app__kbd">⌘K</kbd>
         </button>
         <NuxtLink
@@ -19,16 +41,21 @@
           :key="item.to"
           :to="item.to"
           class="app__side-link"
+          :title="item.label"
         >
           <OlIcon :name="item.icon" :size="20" />
-          <span>{{ item.label }}</span>
+          <span class="app__side-label">{{ item.label }}</span>
         </NuxtLink>
       </nav>
 
       <div class="app__side-foot">
-        <NuxtLink to="/settings" class="app__side-link app__side-link--muted">
+        <NuxtLink
+          to="/settings"
+          class="app__side-link app__side-link--muted"
+          title="Settings"
+        >
           <OlIcon name="settings" :size="20" />
-          <span>Settings</span>
+          <span class="app__side-label">Settings</span>
         </NuxtLink>
 
         <div v-if="me" class="app__account">
@@ -37,10 +64,11 @@
             class="app__signout"
             type="button"
             :disabled="loggingOut"
+            :title="loggingOut ? 'Signing out…' : 'Sign out'"
             @click="onLogout"
           >
             <OlIcon name="logout" :size="16" />
-            {{ loggingOut ? '…' : 'Sign out' }}
+            <span class="app__side-label">{{ loggingOut ? '…' : 'Sign out' }}</span>
           </button>
         </div>
       </div>
@@ -154,15 +182,25 @@
 </template>
 
 <script setup lang="ts">
+const SIDEBAR_KEY = 'ownlane.sidebar.collapsed'
+
 const { me, logout } = useAuth()
 const { clearLocalForLogout, runSync, online } = useOfflineTeaching()
 const loggingOut = ref(false)
 const logoutWarning = ref('')
 const quickOpen = ref(false)
 const searchOpen = ref(false)
+const sidebarCollapsed = ref(false)
 
 function openSearch() {
   searchOpen.value = true
+}
+
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  if (import.meta.client) {
+    localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed.value ? '1' : '0')
+  }
 }
 
 function onGlobalKeydown(e: KeyboardEvent) {
@@ -174,6 +212,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   if (import.meta.client) {
+    sidebarCollapsed.value = localStorage.getItem(SIDEBAR_KEY) === '1'
     window.addEventListener('keydown', onGlobalKeydown)
   }
 })
@@ -429,10 +468,59 @@ async function onLogout() {
     background: var(--surface-sidebar);
     border-right: 1px solid var(--color-border);
     flex-shrink: 0;
+    transition: width var(--duration-med) var(--ease-out), padding var(--duration-med) var(--ease-out);
+  }
+
+  .app[data-sidebar='collapsed'] .app__sidebar {
+    width: var(--sidebar-width-collapsed);
+    padding: 16px 10px;
+  }
+
+  .app__side-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 8px 20px;
+  }
+
+  .app[data-sidebar='collapsed'] .app__side-top {
+    flex-direction: column;
+    margin: 0 0 16px;
+    gap: 10px;
   }
 
   .app__brand {
-    margin: 0 8px 28px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .app__collapse {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--color-muted);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
+  }
+
+  .app__collapse:hover {
+    background: var(--color-paper-white);
+    color: var(--color-ink-black);
+  }
+
+  .app__collapse-icon {
+    transition: transform var(--duration-med) var(--ease-out);
+  }
+
+  .app[data-sidebar='expanded'] .app__collapse-icon {
+    transform: rotate(180deg);
   }
 
   .app__side-nav {
@@ -454,6 +542,12 @@ async function onLogout() {
     transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
   }
 
+  .app[data-sidebar='collapsed'] .app__side-link {
+    justify-content: center;
+    padding: 10px;
+    gap: 0;
+  }
+
   .app__side-link:hover {
     background: rgba(255, 255, 255, 0.65);
   }
@@ -461,7 +555,7 @@ async function onLogout() {
   .app__side-link.router-link-active {
     background: var(--color-ownlane-green);
     color: var(--color-paper-white);
-    box-shadow: var(--shadow-button);
+    box-shadow: none;
   }
 
   .app__side-link--muted {
@@ -472,12 +566,22 @@ async function onLogout() {
     color: var(--color-paper-white);
   }
 
+  .app[data-sidebar='collapsed'] .app__side-label,
+  .app[data-sidebar='collapsed'] .app__kbd,
+  .app[data-sidebar='collapsed'] .app__account-name {
+    display: none;
+  }
+
   .app__search-btn {
     width: 100%;
     border: none;
     background: transparent;
     cursor: pointer;
     text-align: left;
+  }
+
+  .app[data-sidebar='collapsed'] .app__search-btn {
+    text-align: center;
   }
 
   .app__kbd {
@@ -508,6 +612,12 @@ async function onLogout() {
     background: rgba(255, 255, 255, 0.7);
   }
 
+  .app[data-sidebar='collapsed'] .app__account {
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+  }
+
   .app__account-name {
     font-size: var(--text-body-sm);
     margin-bottom: 6px;
@@ -523,6 +633,13 @@ async function onLogout() {
     font-size: var(--text-meta);
     padding: 0;
     min-height: 28px;
+    cursor: pointer;
+  }
+
+  .app[data-sidebar='collapsed'] .app__signout {
+    justify-content: center;
+    width: 100%;
+    min-height: 32px;
   }
 
   .app__signout:hover {

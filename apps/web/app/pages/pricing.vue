@@ -29,7 +29,7 @@
           <NuxtLink
             :to="tier.ctaTo"
             class="marketing-btn"
-            :class="tier.featured ? 'marketing-btn--lilac' : 'marketing-btn--ghost'"
+            :class="tier.featured ? 'marketing-btn--primary' : 'marketing-btn--ghost'"
           >
             {{ tier.cta }}
           </NuxtLink>
@@ -95,9 +95,8 @@ useMarketingSeo({
 }
 
 .pricing-card[data-featured='yes'] {
-  background: var(--color-lilac);
-  border-color: transparent;
-  box-shadow: 0 3px 0 0 var(--color-ink-black);
+  border-color: var(--color-ownlane-green);
+  box-shadow: var(--shadow-soft);
 }
 
 .pricing-card__name {

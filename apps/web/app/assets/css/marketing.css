@@ -41,42 +41,45 @@
 
 .marketing-display {
   font-family: var(--font-haas-grot-disp);
-  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
   line-height: 1.05;
-  letter-spacing: -0.03em;
-  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.033em;
+  font-weight: var(--font-weight-semibold);
   max-width: 18ch;
+  color: var(--color-ink-black);
 }
 
 .marketing-lead {
-  font-size: clamp(1.05rem, 2vw, 1.35rem);
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: rgba(30, 44, 15, 0.82);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.5;
+  letter-spacing: -0.16px;
+  color: var(--color-bark);
   max-width: 52ch;
 }
 
 .marketing-eyebrow {
-  font-family: var(--font-martian-mono);
-  font-size: var(--text-caption-mono);
-  letter-spacing: var(--tracking-caption-mono);
+  font-family: var(--font-haas-grot-text);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.042em;
   text-transform: uppercase;
-  color: var(--color-olive);
+  color: var(--color-ownlane-green);
   margin-bottom: var(--spacing-12);
 }
 
 .marketing-h2 {
   font-family: var(--font-haas-grot-disp);
-  font-size: clamp(1.75rem, 3.5vw, 2.625rem);
+  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.025em;
+  font-weight: var(--font-weight-semibold);
   max-width: 22ch;
 }
 
 .marketing-body {
-  font-size: var(--text-body-sm);
-  line-height: var(--leading-body-sm);
-  color: rgba(17, 17, 24, 0.78);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-bark);
   max-width: 58ch;
 }
 
@@ -111,43 +114,39 @@
   justify-content: center;
   gap: var(--spacing-8);
   min-height: var(--control-height);
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-radius: var(--radius-buttons);
-  font-size: var(--text-body-sm);
+  font-size: 15px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.15px;
   text-decoration: none;
-  transition: transform var(--duration-fast) var(--ease-out);
+  transition: background-color var(--duration-fast) ease, border-color var(--duration-fast) ease;
 }
 
 .marketing-btn:active {
-  transform: translateY(1px);
+  transform: none;
 }
 
 .marketing-btn--primary {
-  background: var(--color-carbon);
+  background: var(--color-ownlane-green);
   color: var(--color-paper-white);
-  box-shadow: var(--shadow-button);
+  box-shadow: none;
 }
 
-.marketing-btn--lilac {
-  background: var(--color-lilac-deep);
-  color: var(--color-ink-black);
-  box-shadow: 0 3px 0 0 var(--color-ink-black);
-}
-
-.marketing-btn--lilac:hover:not(:disabled) {
-  background: var(--color-lilac);
+.marketing-btn--primary:hover {
+  background: var(--color-jelly-green);
 }
 
 .marketing-btn--ghost {
-  background: transparent;
+  background: var(--color-paper-white);
   color: var(--color-ink-black);
-  border: 1px solid var(--color-border-strong);
+  border: 1px solid var(--color-ink-black);
 }
 
 .marketing-btn--dark {
-  background: var(--color-carbon);
+  background: var(--color-ink-black);
   color: var(--color-paper-white);
-  box-shadow: var(--shadow-button-dark);
+  box-shadow: none;
 }
 
 .marketing-link {

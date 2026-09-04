@@ -18,6 +18,7 @@ use app\models\LearnerCompanion;
 use app\models\LearnerIntake;
 use app\models\LearnerPackage;
 use app\models\LearnerPortalAccount;
+use app\models\LearnerSkillProgress;
 use app\models\LearnerSkillSelfAssessment;
 use app\models\MockTest;
 use app\models\MockTestFault;
@@ -48,14 +49,14 @@ use yii\base\Exception;
  */
 final class DemoSeeder
 {
-    public const DEMO_EMAIL = 'demo';
-    public const DEMO_PASSWORD = 'demo';
+    public const DEMO_EMAIL = 'instructor';
+    public const DEMO_PASSWORD = 'instructor';
     public const DEMO_NAME = 'Amina Yusuf';
     public const DEMO_ORG = 'Amina Yusuf Driving Tuition';
 
-    /** Activated learner portal showcase account (Sarah Ahmed). */
-    public const PORTAL_EMAIL = 'sarah.ahmed@example.com';
-    public const PORTAL_PASSWORD = 'learnerpass1';
+    /** Activated learner portal showcase login (Sarah Ahmed pupil). */
+    public const PORTAL_EMAIL = 'learner';
+    public const PORTAL_PASSWORD = 'learner';
     public const PORTAL_LEARNER_CONTACT_EMAIL = 'sarah.ahmed@example.com';
 
     private bool $fresh;
@@ -190,10 +191,24 @@ final class DemoSeeder
 
     /**
      * Wipe org data for the target account. Only delete the user row for the
-     * disposable default demo email.
+     * disposable default demo login.
      */
     private function wipeTargetAccountData(): void
     {
+        // Migrate away from the old `demo` login id.
+        if ($this->email === self::DEMO_EMAIL) {
+            $legacy = User::findByEmail('demo');
+            if ($legacy !== null && mb_strtolower((string) $legacy->email) !== self::DEMO_EMAIL) {
+                $memberships = Membership::find()->andWhere(['user_id' => (int) $legacy->id])->all();
+                foreach ($memberships as $membership) {
+                    $this->wipeOrganisation((int) $membership->organisation_id);
+                }
+                Yii::$app->db->createCommand()
+                    ->delete('{{%users}}', ['id' => (int) $legacy->id])
+                    ->execute();
+            }
+        }
+
         $user = User::findByEmail($this->email);
         if ($user === null) {
             return;
@@ -387,7 +402,7 @@ final class DemoSeeder
     }
 
     /**
-     * Activate Amina's portal account (demo / demo) and attach rich skill + route history.
+     * Activate Sarah's portal account (learner / learner) and attach rich skill + route history.
      *
      * @param list<Learner> $pupils
      */

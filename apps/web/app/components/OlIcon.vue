@@ -27,6 +27,7 @@ const props = withDefaults(defineProps<{
     | 'logout'
     | 'lesson'
     | 'expense'
+    | 'lightning'
   size?: number
 }>(), {
   size: 20,
@@ -55,6 +56,7 @@ const paths: Record<string, string> = {
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   lesson: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
   expense: 'M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6',
+  lightning: 'M13 2 3 14h8l-1 8 10-12h-8l1-8z',
 }
 </script>
 

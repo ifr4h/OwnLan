@@ -67,14 +67,14 @@ const chartData = computed(() => ({
     {
       label: 'Hours',
       data: props.months.map(m => m.hours),
-      borderColor: '#A9DF74',
+      borderColor: '#A8D5B5',
       backgroundColor: 'rgba(193, 244, 143, 0.28)',
       fill: true,
       tension: 0.35,
       pointRadius: 4,
       pointHoverRadius: 7,
-      pointBackgroundColor: '#1E2C0F',
-      pointBorderColor: '#FEFFFC',
+      pointBackgroundColor: '#111118',
+      pointBorderColor: '#ffffff',
       pointBorderWidth: 2,
       borderWidth: 2,
     },
@@ -88,7 +88,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
-      backgroundColor: '#1E2C0F',
+      backgroundColor: '#111118',
       titleFont: { family: 'Manrope', size: 12 },
       bodyFont: { family: 'Manrope', size: 13 },
       padding: 10,

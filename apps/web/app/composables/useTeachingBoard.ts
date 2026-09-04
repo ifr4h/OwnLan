@@ -23,7 +23,7 @@ export function useTeachingBoard(initial?: Scene) {
   const scene = ref<Scene>(initial ? cloneScene(initial) : createEmptyScene())
   const tool = ref<TeachingTool>('select')
   const selectedId = ref<string | null>(null)
-  const penColor = ref('#1E2C0F')
+  const penColor = ref('#111118')
   const highlighterColor = ref('rgba(255, 218, 0, 0.45)')
   const penWidth = ref(3)
   const highlighterWidth = ref(18)

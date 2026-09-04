@@ -157,8 +157,8 @@ onMounted(() => {
   letter-spacing: 0.04em;
   padding: 2px 8px;
   border-radius: var(--radius-tags);
-  background: var(--color-lilac);
-  color: var(--color-ink-black);
+  background: var(--color-frost-green);
+  color: var(--color-ownlane-green);
 }
 
 .mnav__desktop {

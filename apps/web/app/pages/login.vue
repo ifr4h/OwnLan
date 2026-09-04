@@ -6,8 +6,17 @@
 
     <form class="ol-stack auth-form" @submit.prevent="onSubmit">
       <label class="ol-field">
-        <span class="ol-field__label">Email</span>
-        <input v-model="email" class="ol-input" type="email" autocomplete="username" required>
+        <span class="ol-field__label">Email or username</span>
+        <input
+          v-model="email"
+          class="ol-input"
+          type="text"
+          autocomplete="username"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+          required
+        >
       </label>
 
       <label class="ol-field">

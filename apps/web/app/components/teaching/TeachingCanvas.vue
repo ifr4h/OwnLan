@@ -15,7 +15,7 @@ const props = withDefaults(
     highlighterWidth?: number
   }>(),
   {
-    penColor: '#1E2C0F',
+    penColor: '#111118',
     highlighterColor: 'rgba(255, 218, 0, 0.45)',
     penWidth: 3,
     highlighterWidth: 18,
@@ -145,7 +145,7 @@ function paint() {
   ctx.clearRect(0, 0, cssW, cssH)
 
   // Chalk surface
-  ctx.fillStyle = '#F7FAF4'
+  ctx.fillStyle = '#F3F8F4'
   ctx.fillRect(0, 0, cssW, cssH)
 
   const s = viewScale()
@@ -157,7 +157,7 @@ function paint() {
   ctx.scale(s, s)
 
   // Soft board frame
-  ctx.fillStyle = '#EEF8E4'
+  ctx.fillStyle = '#E2F0E7'
   roundRect(ctx, -8, -8, LOGICAL + 16, LOGICAL + 16, 24)
   ctx.fill()
 
@@ -269,7 +269,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
   if (selected) {
     ctx.beginPath()
     ctx.arc(0, 0, HIT_RADIUS + 4, 0, Math.PI * 2)
-    ctx.strokeStyle = '#1E2C0F'
+    ctx.strokeStyle = '#111118'
     ctx.lineWidth = 3
     ctx.setLineDash([6, 4])
     ctx.stroke()
@@ -280,13 +280,13 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
   if (kind === 'learner_car' || kind === 'other_car' || kind === 'bus') {
     const w = kind === 'bus' ? 44 : 36
     const h = kind === 'bus' ? 70 : 56
-    ctx.fillStyle = kind === 'learner_car' ? '#1E2C0F' : kind === 'bus' ? '#ffda00' : '#1E2C0F'
+    ctx.fillStyle = kind === 'learner_car' ? '#111118' : kind === 'bus' ? '#ffda00' : '#111118'
     roundRect(ctx, -w / 2, -h / 2, w, h, 8)
     ctx.fill()
-    ctx.fillStyle = kind === 'other_car' ? '#fff' : '#EEF8E4'
+    ctx.fillStyle = kind === 'other_car' ? '#fff' : '#E2F0E7'
     ctx.fillRect(-w / 2 + 6, -h / 2 + 8, w - 12, 14)
   } else if (kind === 'bike') {
-    ctx.strokeStyle = '#1E2C0F'
+    ctx.strokeStyle = '#111118'
     ctx.lineWidth = 3
     ctx.beginPath()
     ctx.arc(-14, 10, 12, 0, Math.PI * 2)
@@ -298,16 +298,16 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
     ctx.lineTo(14, 10)
     ctx.stroke()
   } else if (kind === 'pedestrian') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     ctx.beginPath()
     ctx.arc(0, -14, 8, 0, Math.PI * 2)
     ctx.fill()
     ctx.fillRect(-7, -4, 14, 28)
   } else if (kind === 'traffic_light') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     roundRect(ctx, -12, -28, 24, 56, 6)
     ctx.fill()
-    const colors = ['#ff4141', '#ffda00', '#C1F48F']
+    const colors = ['#ff4141', '#ffda00', '#16ab59']
     colors.forEach((c, i) => {
       ctx.fillStyle = c
       ctx.beginPath()
@@ -348,7 +348,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
     ctx.textBaseline = 'middle'
     ctx.fillText('STOP', 0, 1)
   } else if (kind === 'arrow') {
-    ctx.fillStyle = '#1E2C0F'
+    ctx.fillStyle = '#111118'
     ctx.beginPath()
     ctx.moveTo(0, -28)
     ctx.lineTo(16, 8)
@@ -367,7 +367,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
       const tw = ctx.measureText(text).width
       roundRect(ctx, -tw / 2 - 12, -18, tw + 24, 36, 10)
       ctx.fill()
-      ctx.fillStyle = '#1E2C0F'
+      ctx.fillStyle = '#111118'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(text, 0, 1)
@@ -379,7 +379,7 @@ function drawObject(ctx: CanvasRenderingContext2D, obj: SceneObject, selected: b
       ctx.lineTo(-24, 22)
       ctx.closePath()
       ctx.fill()
-      ctx.fillStyle = '#1E2C0F'
+      ctx.fillStyle = '#111118'
       ctx.font = 'bold 22px Manrope, sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'

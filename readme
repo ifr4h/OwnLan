@@ -68,16 +68,25 @@ php yii demo/seed --fresh=1
 
 Sign in at [http://127.0.0.1:3000/login](http://127.0.0.1:3000/login) — one form routes you to the right app:
 
-| Role | Email | Password | Opens |
-|------|-------|----------|-------|
-| Instructor | `demo` | `demo` | Today |
-| Learner (Amina) | `amina.hassan@example.com` | `learnerpass1` | Learner portal |
+| Role | Email / username | Password | Opens |
+|------|------------------|----------|-------|
+| Instructor | `instructor` | `instructor` | Instructor app (Today) |
+| Learner (Sarah Ahmed) | `learner` | `learner` | Learner portal |
+| Companion (Fatima) | `fatima.hassan@example.com` | `companionpass1` | Companion (dev only) |
+| Companion (Yusuf) | `yusuf.hassan@example.com` | `companionpass1` | Companion (dev only) |
 
-Companion demo accounts (`fatima.hassan@example.com`, `yusuf.hassan@example.com`) are seeded for future development but the broad Companion product is **not exposed** in beta. See `docs/17-companion-access-decision.md`.
+Companion accounts are seeded for development. The broad Companion product is **not exposed** in beta — see `docs/17-companion-access-decision.md`.
 
 Legacy URLs `/portal/login` and `/companion/login` redirect to `/login`.
 
-Re-run without `--fresh` to refresh demo data while keeping the same login.
+If create-account or sign-in shows **Bad Gateway**, the API on `:8080` is not running. Start it (terminal 2 above), then retry.
+
+Re-seed locally:
+
+```bash
+cd apps/api
+php yii demo/seed --fresh=1
+```
 
 ## Tests
 

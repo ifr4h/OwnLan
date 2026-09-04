@@ -73,10 +73,10 @@ function drawCar(ctx: CanvasRenderingContext2D, t: number) {
   const y = 500
   ctx.save()
   ctx.translate(x, y)
-  ctx.fillStyle = '#1E2C0F'
+  ctx.fillStyle = '#111118'
   roundRect(ctx, -18, -28, 36, 56, 8)
   ctx.fill()
-  ctx.fillStyle = '#EEF8E4'
+  ctx.fillStyle = '#E2F0E7'
   ctx.fillRect(-12, -20, 24, 14)
   ctx.restore()
 }
@@ -99,7 +99,7 @@ function paint() {
   const oy = (cssH - LOGICAL * scale) / 2
 
   ctx.clearRect(0, 0, cssW, cssH)
-  ctx.fillStyle = '#EEF8E4'
+  ctx.fillStyle = '#E2F0E7'
   ctx.fillRect(0, 0, cssW, cssH)
 
   ctx.save()

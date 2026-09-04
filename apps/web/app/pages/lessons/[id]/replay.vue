@@ -77,8 +77,8 @@ function redrawMarkers() {
   for (const moment of moments.value) {
     const marker = Lmod.circleMarker([moment.lat, moment.lng], {
       radius: moment.id === selectedId.value ? 10 : 7,
-      color: '#1E2C0F',
-      fillColor: moment.id === selectedId.value ? '#1E2C0F' : '#EEF8E4',
+      color: '#111118',
+      fillColor: moment.id === selectedId.value ? '#111118' : '#E2F0E7',
       fillOpacity: 1,
       weight: 2,
     }).addTo(map)

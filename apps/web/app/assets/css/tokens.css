@@ -1,87 +1,118 @@
 :root {
   /*
-   * Exact Tapdaa palette — https://www.tapdaa.com/
-   * Framer tokens + measured rgb() values from the live site.
-   * Do not invent near-miss hex values.
+   * OwnLane visual system — Zapier-inspired warm cream notebook,
+   * with OwnLane Green as the single chromatic accent (not orange).
+   * See docs/DESIGN.md
    */
-  --color-ownlane-green: #c1f48f; /* Framer token lime */
-  --color-ink-black: #1e2c0f; /* rgb(30, 44, 15) — primary text */
-  --color-paper-white: #ffffff; /* rgb(255, 255, 255) */
-  --color-chalk-green: #f7faf4; /* Framer token canvas */
-  --color-frost-green: #eef8e4; /* Framer token mint wash */
-  --color-carbon: #000000; /* primary CTA fill on Tapdaa */
-  --color-olive: #3e4734; /* rgb(62, 71, 52) */
-  --color-muted: #777a74; /* Framer token muted */
-  --color-border: #eff2ed; /* rgb(239, 242, 237) */
-  --color-soft-sage: #a9df74; /* rgb(169, 223, 116) */
-  --color-paper-soft: #fefffc;
-  --color-near-black: #101820;
-  --color-lilac: #e3a6ff; /* rgb(227, 166, 255) decorative */
-  --color-lilac-deep: #d399ed; /* rgb(211, 153, 237) decorative */
-  --color-teal: #8ff4e2; /* rgb(143, 244, 226) decorative */
-  --color-teal-deep: #64d7c2; /* rgb(100, 215, 194) decorative */
 
-  /* Aliases kept for existing component references */
-  --color-jelly-green: #c1f48f;
-  --color-marker-red: #e3a6ff; /* map old decorative slot → Tapdaa lilac */
-  --color-hi-yellow: #8ff4e2; /* map old decorative slot → Tapdaa teal */
-  --color-bubblegum-pink: #d399ed;
-  --color-sunbeam: #a9df74;
+  /* Accent */
+  --color-ownlane-green: #168B55;
+  --color-jelly-green: #1a9d61; /* hover / brighter green */
 
-  /* App semantic surfaces */
+  /* Warm neutrals */
+  --color-ink-black: #201515; /* Ink Brown — primary text */
+  --color-bark: #36342e;
+  --color-coffee-stone: #413735;
+  --color-muted: #939084; /* Stone Gray */
+  --color-ash-mist: #b7b6b3;
+  --color-driftwood: #c5c0b1;
+  --color-border: #eceae3; /* Stone Linen */
+  --color-border-strong: #c5c0b1;
+
+  /* Surfaces */
+  --color-paper-white: #fffefb; /* Cream Paper */
+  --color-paper-soft: #fffefb;
+  --color-chalk-green: #fffefb; /* canvas alias — warm cream */
+  --color-frost-green: #f8f4f0; /* Parchment wash */
+  --color-parchment: #f8f4f0;
+  --color-stone-linen: #eceae3;
+
+  --color-carbon: #201515;
+  --color-near-black: #201515;
+  --color-olive: #36342e;
+  --color-soft-sage: #c8dfd0;
+
+  /* Decorative accents kept for teaching / marketing shapes */
+  --color-marker-red: #ff3b30;
+  --color-hi-yellow: #e6b800;
+  --color-bubblegum-pink: #e8b4bc;
+  --color-sunbeam: #f0d56a;
+
+  /*
+   * Diary lesson tones — soft pastel stack
+   * Paid/lime · Break/lavender · Block/blue · Unpaid/coral
+   */
+  --color-diary-paid: #c4f281;
+  --color-diary-paid-ink: #243a12;
+  --color-diary-break: #c7c5ff;
+  --color-diary-break-ink: #2f2c55;
+  --color-diary-block: #b3d4ff;
+  --color-diary-block-ink: #1a3a5c;
+  --color-diary-unpaid: #ffaeb7;
+  --color-diary-unpaid-ink: #6b2430;
+  --color-diary-offer: #dcecff;
+  --color-diary-offer-ink: #2f6fad;
+  --color-diary-offer-cta: #ffaeb7;
+
+  /* Semantic */
   --color-danger: #c62828;
   --color-danger-wash: #fdecea;
   --color-warning: #8a6d00;
   --color-warning-wash: #fff6cc;
-  --color-success: #3e4734;
-  --color-success-wash: #eef8e4;
-  --color-info-wash: #eff2ed;
-  --color-border-strong: rgba(30, 44, 15, 0.14);
+  --color-success: #168B55;
+  --color-success-wash: #e8f3ec;
+  --color-info-wash: #f8f4f0;
 
   /*
-   * Typography — Haas Grot substitutes (Manrope + JetBrains Mono)
-   * until licensed Haas files are available.
+   * Typography
+   * Inter — UI / body (Zapier Inter role)
+   * Bricolage Grotesque — display substitute for Degular Display
+   * JetBrains Mono — captions / mono labels
    */
-  --font-haas-grot-disp: 'Manrope', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-haas-grot-text: 'Manrope', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-haas-grot-disp: 'Bricolage Grotesque', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-haas-grot-text: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-martian-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-inter: var(--font-haas-grot-text);
+  --font-display: var(--font-haas-grot-disp);
 
   --text-caption-mono: 12px;
-  --leading-caption-mono: 1.35;
-  --tracking-caption-mono: -0.156px;
+  --leading-caption-mono: 1.5;
+  --tracking-caption-mono: 0.042em;
 
   --text-meta: 13px;
-  --leading-meta: 1.35;
+  --leading-meta: 1.4;
   --tracking-meta: -0.1px;
 
-  --text-label: 13px;
-  --leading-label: 1.3;
-  --tracking-label: -0.08px;
+  --text-label: 12px;
+  --leading-label: 1.35;
+  --tracking-label: 0.042em;
 
-  --text-body-sm: 16px;
-  --leading-body-sm: 1.4;
-  --tracking-body-sm: -0.32px;
-  --text-body: 20px;
-  --leading-body: 1.4;
-  --tracking-body: -0.2px;
-  --text-subheading: 22px;
-  --leading-subheading: 1.35;
-  --tracking-subheading: -0.176px;
+  --text-body-sm: 15px;
+  --leading-body-sm: 1.5;
+  --tracking-body-sm: -0.15px;
+  --text-body: 16px;
+  --leading-body: 1.5;
+  --tracking-body: -0.16px;
+  --text-subheading: 18px;
+  --leading-subheading: 1.43;
+  --tracking-subheading: -0.18px;
   --text-heading-sm: 24px;
-  --leading-heading-sm: 1.25;
-  --tracking-heading-sm: -0.168px;
+  --leading-heading-sm: 1.2;
+  --tracking-heading-sm: 0.02em;
   --text-heading-md: 28px;
   --leading-heading-md: 1.15;
-  --tracking-heading-md: -0.28px;
-  --text-heading-lg: 42px;
+  --tracking-heading-md: 0.025em;
+  --text-heading-lg: 36px;
   --leading-heading-lg: 1.1;
-  --tracking-heading-lg: -0.378px;
+  --tracking-heading-lg: 0.033em;
 
   --text-metric: 32px;
-  --leading-metric: 1.1;
-  --tracking-metric: -0.4px;
+  --leading-metric: 1.15;
+  --tracking-metric: -0.58px;
 
   --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
 
   --spacing-unit: 4px;
   --spacing-4: 4px;
@@ -94,43 +125,49 @@
   --spacing-32: 32px;
   --spacing-40: 40px;
   --spacing-48: 48px;
+  --spacing-56: 56px;
+  --spacing-64: 64px;
 
   --page-max-width: 1200px;
   --content-max-width: 720px;
   --content-wide-max: 960px;
   --sidebar-width: 240px;
+  --sidebar-width-collapsed: 72px;
   --portal-max-width: 1280px;
   --portal-context-width: 340px;
 
   --bp-tablet: 768px;
   --bp-desktop: 1024px;
   --bp-wide: 1440px;
-  --card-padding: 20px;
-  --card-padding-sm: 14px;
+  --card-padding: 24px;
+  --card-padding-sm: 16px;
   --element-gap: 12px;
-  --section-gap: 28px;
-  --control-height: 48px;
-  --control-height-sm: 40px;
+  --section-gap: 32px;
+  --control-height: 44px;
+  --control-height-sm: 36px;
 
-  --radius-cards: 20px;
-  --radius-small: 14px;
-  --radius-panel: 16px;
-  --radius-inputs: 5000px;
-  --radius-buttons: 48px;
-  --radius-tags: 5000px;
-  --radius-textarea: 16px;
+  /* Paper-thin radii (Zapier shapes, OwnLane green accent) */
+  --radius-tags: 4px;
+  --radius-cards: 8px;
+  --radius-small: 8px;
+  --radius-panel: 8px;
+  --radius-inputs: 4px;
+  --radius-buttons: 20px;
+  --radius-textarea: 8px;
+  --radius-pills: 9999px;
 
-  --surface-canvas: var(--color-chalk-green);
+  --surface-canvas: var(--color-paper-white);
   --surface-card: var(--color-paper-white);
-  --surface-wash: var(--color-frost-green);
-  --surface-sidebar: #eff2ed;
+  --surface-wash: var(--color-parchment);
+  --surface-sidebar: var(--color-parchment);
   --surface-elevated: var(--color-paper-white);
+  --surface-inset: var(--color-stone-linen);
 
-  /* Tapdaa CTAs are black; lime accents the offset shadow */
-  --shadow-button: 0 3px 0 0 var(--color-ownlane-green);
-  --shadow-button-dark: 0 3px 0 0 var(--color-soft-sage);
-  --shadow-card: 0 1px 0 0 var(--color-ink-black);
-  --shadow-soft: 0 8px 24px rgba(30, 44, 15, 0.06);
+  /* Almost no elevation — hairlines do the work */
+  --shadow-button: none;
+  --shadow-button-dark: none;
+  --shadow-card: none;
+  --shadow-soft: 0 4px 24px rgba(32, 21, 21, 0.06);
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 120ms;

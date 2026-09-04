@@ -132,8 +132,8 @@ Broad Companion product (UI + HTTP), messaging, camera/audio, dashcam, live nav,
 
 | Role | Login | Password |
 |------|-------|----------|
-| Instructor | `demo` | `demo` |
-| Learner (Amina) | `amina.hassan@example.com` | `learnerpass1` |
+| Instructor | `instructor` | `instructor` |
+| Learner (Sarah) | `learner` | `learner` |
 
 Companion demo accounts exist in the seed data but the broad Companion product is deferred for beta. See `17-companion-access-decision.md`.
 

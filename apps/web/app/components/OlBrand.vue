@@ -41,8 +41,8 @@ withDefaults(defineProps<{
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: var(--color-ownlane-green, #c1f48f);
-  color: var(--color-ink-black, #1e2c0f);
+  background: var(--color-ownlane-green, #168B55);
+  color: var(--color-paper-white, #fffefb);
   flex-shrink: 0;
 }
 
@@ -68,7 +68,7 @@ withDefaults(defineProps<{
   font-size: 20px;
   letter-spacing: -0.02em;
   line-height: 1;
-  color: var(--color-ink-black, #1e2c0f);
+  color: var(--color-ink-black, #111118);
 }
 
 .ol-brand--compact .ol-brand__wordmark {

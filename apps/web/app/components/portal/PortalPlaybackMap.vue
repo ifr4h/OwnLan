@@ -146,7 +146,7 @@ onMounted(async () => {
   if (points.length >= 2) {
     latlngs = points.map(([lat, lng]) => L.latLng(lat, lng))
     lineLayer = L.polyline(latlngs, {
-      color: '#C1F48F',
+      color: '#168B55',
       weight: 5,
       opacity: 0.9,
       lineJoin: 'round',
@@ -192,7 +192,7 @@ watch(
     }
     latlngs = points.map(([lat, lng]) => Lref!.latLng(lat, lng))
     lineLayer = Lref.polyline(latlngs, {
-      color: '#C1F48F',
+      color: '#168B55',
       weight: 5,
       opacity: 0.9,
     }).addTo(map)

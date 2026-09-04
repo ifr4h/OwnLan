@@ -66,7 +66,7 @@ onMounted(async () => {
   if (points.length >= 2) {
     const latlngs = points.map(([lat, lng]) => L.latLng(lat, lng))
     lineLayer = L.polyline([], {
-      color: '#C1F48F',
+      color: '#168B55',
       weight: 4,
       opacity: 0.92,
       lineJoin: 'round',
@@ -117,7 +117,7 @@ watch(
     if (points.length < 2) return
     const latlngs = points.map(([lat, lng]) => L.latLng(lat, lng))
     lineLayer = L.polyline(latlngs, {
-      color: '#C1F48F',
+      color: '#168B55',
       weight: 4,
       opacity: 0.92,
     }).addTo(map)

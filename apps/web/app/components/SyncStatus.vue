@@ -1,5 +1,9 @@
 <template>
-  <div class="sync" aria-live="polite">
+  <div
+    v-if="authBlocked || banner !== 'hidden'"
+    class="sync"
+    aria-live="polite"
+  >
     <p v-if="authBlocked" class="sync__chip sync__chip--warn">
       Sign in again to sync saved changes
     </p>
@@ -31,11 +35,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Overlay — never push page content (no layout shift on diary). */
 .sync {
-  min-height: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  pointer-events: none;
 }
 
 .sync__chip {
+  pointer-events: auto;
   margin: 0;
   padding: 8px 16px;
   font-size: var(--text-meta);
@@ -43,6 +54,7 @@ onBeforeUnmount(() => {
   background: var(--surface-wash);
   border-bottom: 1px solid var(--color-border);
   color: var(--color-ink-black);
+  box-shadow: 0 8px 24px rgba(32, 21, 21, 0.08);
 }
 
 .sync__chip--ok {

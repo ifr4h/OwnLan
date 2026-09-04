@@ -19,7 +19,7 @@ export default defineNuxtConfig({
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'OwnLane — run your driving school. Keep your independence.' },
-        { name: 'theme-color', content: '#c1f48f' },
+        { name: 'theme-color', content: '#168B55' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
@@ -30,7 +30,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=Manrope:wght@400&display=swap',
+          href: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
         },
         { rel: 'icon', type: 'image/png', href: '/pwa-192.png' },
         { rel: 'apple-touch-icon', href: '/pwa-192.png' },
@@ -60,8 +60,8 @@ export default defineNuxtConfig({
       name: 'OwnLane',
       short_name: 'OwnLane',
       description: 'Instructor day — lessons, pupils, and progress.',
-      theme_color: '#c1f48f',
-      background_color: '#f7faf4',
+      theme_color: '#168B55',
+      background_color: '#fffefb',
       display: 'standalone',
       orientation: 'portrait-primary',
       start_url: '/today',

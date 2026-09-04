@@ -128,7 +128,7 @@ function onPointerDown(e: PointerEvent) {
   overlayEl.value.setPointerCapture(e.pointerId)
   drawing = true
   const p = localPoint(e)
-  const stroke = createStroke('pen', '#1E2C0F', 4, [p])
+  const stroke = createStroke('pen', '#111118', 4, [p])
   strokes.value.push(stroke)
   liveId.value = stroke.id
   paintOverlay()

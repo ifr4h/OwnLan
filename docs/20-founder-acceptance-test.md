@@ -98,7 +98,7 @@ Service-layer org scoping + TenantIsolationTest. Guest payment / share tokens pu
 | Guest pay used instructor layout | `layout: false` on pay pages |
 | Today Call button never rendered (`focusMobile = null`) | API returns `learner_mobile`; UI uses it |
 | Settings unreachable on mobile | Settings icon in mobile top bar |
-| Production demo seed with `demo`/`demo` | Blocked unless `ALLOW_DEMO_SEED=1` |
+| Production demo seed with `instructor`/`instructor` | Blocked unless `ALLOW_DEMO_SEED=1` |
 | API error handler could expose SQL/internal messages | `HealthController::actionError` sanitises non-HTTP exceptions when not `YII_DEBUG` |
 
 ---

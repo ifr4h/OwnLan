@@ -27,7 +27,7 @@ const roleLabel = computed(() => {
   flex-direction: column;
   max-width: 720px;
   margin: 0 auto;
-  background: var(--color-chalk-green, #F7FAF4);
+  background: var(--color-chalk-green, #F3F8F4);
 }
 
 .companion-shell__top {
@@ -39,7 +39,7 @@ const roleLabel = computed(() => {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: color-mix(in srgb, var(--color-chalk-green, #F7FAF4) 92%, transparent);
+  background: color-mix(in srgb, var(--color-chalk-green, #F3F8F4) 92%, transparent);
   backdrop-filter: blur(8px);
 }
 

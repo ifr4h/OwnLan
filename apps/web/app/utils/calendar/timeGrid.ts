@@ -43,6 +43,38 @@ export function formatHm(totalMinutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+/** Compact hour label for the time rail (Apple-style quiet chrome). */
+export function formatHourLabel(totalMinutes: number): string {
+  const mins = ((Math.round(totalMinutes) % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (m === 0) return String(h)
+  return `${h}:${String(m).padStart(2, '0')}`
+}
+
+/** Soft pastel pairs for lesson blocks — darker text on light wash. */
+export const LESSON_PASTELS = [
+  { bg: '#e7f6ee', fg: '#0f6b42' }, // OwnLane mint
+  { bg: '#e5f3ff', fg: '#1a5f8a' }, // sky
+  { bg: '#f3eaff', fg: '#5a3d8a' }, // lilac
+  { bg: '#ffe8dc', fg: '#a14a1f' }, // peach
+  { bg: '#fff1d6', fg: '#8a6518' }, // sand
+  { bg: '#e0f7f3', fg: '#1a6b63' }, // teal
+  { bg: '#ffe3ec', fg: '#9a3d5c' }, // rose
+] as const
+
+export function pastelForLearner(seed: string | number | null | undefined): {
+  bg: string
+  fg: string
+} {
+  const raw = String(seed ?? '0')
+  let hash = 0
+  for (let i = 0; i < raw.length; i++) {
+    hash = (hash * 31 + raw.charCodeAt(i)) >>> 0
+  }
+  return LESSON_PASTELS[hash % LESSON_PASTELS.length]!
+}
+
 export function localDateTime(date: string, minutes: number): string {
   return `${date}T${formatHm(minutes)}`
 }
@@ -73,6 +105,15 @@ export function resolveGridBounds(opts: {
     end = 18 * 60
   }
   return { startMinutes: start, endMinutes: end, pxPerMinute: 1.15 }
+}
+
+/** Full midnight–midnight day (Apple-style). Work hours only affect outside shading. */
+export function fullDayGridBounds(pxPerMinute = 1.2): GridBounds {
+  return {
+    startMinutes: 0,
+    endMinutes: 24 * 60,
+    pxPerMinute,
+  }
 }
 
 export function hourMarks(bounds: GridBounds): number[] {
