@@ -372,3 +372,269 @@ When implementing or reviewing a feature, actively identify unnecessary friction
 The standard should be:
 
 "A new instructor can open OwnLane and understand how to use the core product without needing instructions."
+
+# Production UI Quality
+
+OwnLane is a commercial consumer-grade SaaS product, not an internal admin tool.
+
+Do not ship visibly browser-default or framework-default UI where it makes the product feel unfinished.
+
+Use intentional, reusable and accessible OwnLane components for common product interactions.
+
+Native controls may be retained when they provide materially better accessibility or mobile UX, but they must integrate cleanly with the OwnLane visual system.
+
+Every new screen should look and feel production-ready as it is built, rather than relying on a future "make it pretty" pass.
+
+
+# Offline Reliability
+
+OwnLane's instructor product must be resilient to poor mobile connectivity.
+
+Critical teaching workflows should be designed offline-capable rather than assuming a successful network request for every interaction.
+
+Never allow temporary loss of connectivity to cause the loss of instructor-entered lesson notes or progress.
+
+Offline complexity should remain proportional to real instructor needs: local-first for critical operational workflows, graceful degradation for network-dependent enhancements.
+
+OWNLANE COPY RULE
+
+The copy across OwnLane currently risks sounding AI-written.
+
+Fix that.
+
+We want professionally written brand and product copy that sounds like it came
+from a good UK product/creative team who know the driving instruction industry.
+
+Do not use recognisable AI writing habits.
+
+In particular, stop using em dashes constantly.
+
+Avoid constructions like:
+
+"Your diary — sorted."
+
+"Simple, powerful, effortless."
+
+"Your pupils. Your business. Your way."
+
+"Not just a diary. A smarter way to work."
+
+"Built for instructors. Designed for independence."
+
+"Less admin. More driving."
+
+"Everything you need. Nothing you don't."
+
+These are polished, but they now sound extremely generated and generic.
+
+Also avoid constantly writing:
+
+"X isn't just Y. It's Z."
+
+"Whether you're X, Y or Z..."
+
+"From X to Y..."
+
+"Designed to help you..."
+
+"Built to..."
+
+"Say goodbye to..."
+
+"Meet your new..."
+
+"That's where OwnLane comes in."
+
+"Here's the best part:"
+
+Do not use three-item adjective lists simply because they sound neat.
+
+Do not make every heading a slogan.
+
+Do not force symmetry into sentences.
+
+Do not use unnecessary hyphens, em dashes or colons to manufacture punchiness.
+
+Do not write like LinkedIn.
+
+Do not write like a startup pitch deck.
+
+Do not write like ChatGPT.
+
+Do not make every piece of copy sound profound.
+
+Most interface copy should simply tell the person what is happening.
+
+For example:
+
+BAD
+
+"Got a gap? Fill it."
+
+BETTER
+
+"You've got 2 hours free on Thursday"
+
+Then:
+
+"3 pupils could fit here"
+
+[See pupils]
+
+
+BAD
+
+"Your driving journey, all in one place."
+
+BETTER
+
+"26 hours driven"
+
+"20 lessons"
+
+
+BAD
+
+"Stay on top of every pupil."
+
+BETTER
+
+"4 pupils haven't got another lesson booked"
+
+
+BAD
+
+"Money made simple."
+
+BETTER
+
+"£420 still to collect"
+
+
+BAD
+
+"Never miss a beat."
+
+BETTER
+
+"Sarah usually has a lesson every week. Nothing is booked after Friday."
+
+
+The second examples are better because they sound like the product is talking
+about something real.
+
+That is the OwnLane approach.
+
+USE REAL INFORMATION AS THE COPY.
+
+Instead of telling users OwnLane is clever, show them something clever.
+
+Instead of:
+
+"Smart scheduling helps you optimise your diary."
+
+show:
+
+"Tuesday, 2:00–4:00 is free"
+
+"These 3 pupils are available"
+
+
+Instead of:
+
+"Stay on track with your learning goals."
+
+show:
+
+"Your instructor wants to work on larger roundabouts next"
+
+
+Instead of:
+
+"Gain valuable insights into your progress."
+
+show:
+
+"You're now doing junctions with less help"
+
+
+COPY LENGTH
+
+Interface copy should usually be short because the interface provides the
+context.
+
+But do not artificially shorten every sentence.
+
+Normal sentences are allowed.
+
+Sometimes a natural 12-word sentence sounds much more human than four
+two-word fragments.
+
+Vary sentence length naturally.
+
+PUNCTUATION
+
+Use normal British English punctuation.
+
+Em dashes should be rare.
+
+Do not use them as the default way of joining thoughts.
+
+Do not overuse hyphenated marketing phrases.
+
+Do not use exclamation marks unless the situation genuinely calls for one.
+
+VOICE
+
+OwnLane should sound like someone who understands the job.
+
+An instructor should occasionally read something and think:
+
+"Yep, that's exactly the problem."
+
+Use driving-instructor language where we know instructors actually use it.
+
+Do not invent industry slang to sound authentic.
+
+Learner copy should sound normal and encouraging without talking down to them.
+
+Do not make the learner experience childish.
+
+MARKETING COPY
+
+Marketing pages can have more personality than application UI.
+
+But even marketing copy should be concrete.
+
+Talk about recognisable problems.
+
+Diary gaps.
+Late cancellations.
+Remembering who needs booking.
+Chasing lesson money.
+Keeping progress records.
+Remembering what happened last lesson.
+Explaining a difficult junction.
+Keeping learners informed.
+
+Specific beats clever.
+
+Do not write a generic statement when a real situation would communicate the
+benefit better.
+
+FINAL TEST
+
+When writing OwnLane copy, read it without the word "OwnLane".
+
+If it sounds like something ChatGPT could have generated for a gym app,
+accounting app, CRM, salon platform or project-management tool, rewrite it.
+
+If it could only really belong in a product for driving instructors or people
+learning to drive, we're getting closer.
+
+Do not rewrite the entire product automatically after reading this rule.
+
+First audit the existing visible copy and report the phrases that violate these
+principles, alongside proposed replacements.
+
+Wait for approval before applying a large product-wide copy rewrite.

@@ -18,7 +18,7 @@ class TenantIsolationTest extends Unit
 
     protected function _before(): void
     {
-        Yii::$app->db->createCommand('TRUNCATE memberships, instructors, organisations, users RESTART IDENTITY CASCADE')->execute();
+        Yii::$app->db->createCommand('TRUNCATE lessons, learners, memberships, instructors, organisations, users RESTART IDENTITY CASCADE')->execute();
         Yii::$app->user->logout();
         TenantContext::clear();
     }

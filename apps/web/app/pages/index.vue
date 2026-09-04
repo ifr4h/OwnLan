@@ -1,127 +1,216 @@
 <template>
-  <section class="panel">
-    <p class="panel__eyebrow">Instructor app</p>
-    <h1 class="panel__title">Your day, without the admin mess</h1>
-    <p class="panel__copy">
-      OwnLane keeps pupils, lessons and today’s teaching flow in one place.
-      Authentication and the daily loop come next.
-    </p>
+  <div>
+    <MarketingStructuredData />
+    <!-- Hero -->
+    <section class="home-hero marketing-section">
+      <div class="marketing-shell--wide home-hero__grid">
+        <div class="home-hero__copy motion-reveal">
+          <p class="marketing-eyebrow">{{ copy.hero.eyebrow }}</p>
+          <h1 class="marketing-display">{{ copy.hero.title }}</h1>
+          <p class="marketing-lead">{{ copy.hero.lead }}</p>
+          <div class="marketing-actions">
+            <NuxtLink :to="site.cta.primaryTo" class="marketing-btn marketing-btn--primary">
+              {{ site.cta.primary }}
+            </NuxtLink>
+            <a :href="site.cta.secondaryTo" class="marketing-btn marketing-btn--ghost">
+              {{ site.cta.secondary }}
+            </a>
+          </div>
+        </div>
+        <div class="home-hero__visual motion-reveal motion-reveal--delay-1">
+          <DemoTodayHero />
+        </div>
+      </div>
+    </section>
 
-    <div class="panel__status" role="status">
-      <span class="panel__status-label">API</span>
-      <span
-        class="panel__status-value"
-        :data-state="healthState"
-      >
-        {{ healthLabel }}
-      </span>
-    </div>
+    <!-- Independence -->
+    <section class="marketing-section marketing-section--tight">
+      <div class="marketing-shell home-narrow">
+        <h2 class="marketing-h2">{{ copy.independence.title }}</h2>
+        <p class="marketing-body">{{ copy.independence.body }}</p>
+      </div>
+    </section>
 
-    <NuxtLink to="/today" class="panel__cta">
-      Go to Today
-      <span aria-hidden="true">→</span>
-    </NuxtLink>
-  </section>
+    <!-- Working day -->
+    <section id="how-it-works" class="marketing-section marketing-section--wash">
+      <div class="marketing-shell">
+        <h2 class="marketing-h2">{{ copy.workingDay.title }}</h2>
+        <p class="marketing-body home-narrow">{{ copy.workingDay.intro }}</p>
+        <div class="home-spacer">
+          <DemoDayMoments />
+        </div>
+      </div>
+    </section>
+
+    <!-- Diary -->
+    <section class="marketing-section">
+      <div class="marketing-shell marketing-grid-2">
+        <div>
+          <h2 class="marketing-h2">{{ copy.diary.title }}</h2>
+          <p class="marketing-body">{{ copy.diary.body }}</p>
+          <NuxtLink to="/features/diary" class="marketing-link home-link">Diary feature</NuxtLink>
+        </div>
+        <DemoDiaryDay />
+      </div>
+    </section>
+
+    <!-- Pupil -->
+    <section class="marketing-section marketing-section--paper">
+      <div class="marketing-shell marketing-grid-2 marketing-grid-2--reverse">
+        <div>
+          <h2 class="marketing-h2">{{ copy.pupil.title }}</h2>
+          <p class="marketing-body">{{ copy.pupil.body }}</p>
+          <NuxtLink to="/features/pupils" class="marketing-link home-link">Pupil records</NuxtLink>
+        </div>
+        <DemoPupilCard />
+      </div>
+    </section>
+
+    <!-- Continuity -->
+    <section class="marketing-section">
+      <div class="marketing-shell">
+        <h2 class="marketing-h2">{{ copy.continuity.title }}</h2>
+        <p class="marketing-body home-narrow">{{ copy.continuity.body }}</p>
+        <div class="home-spacer">
+          <DemoContinuityFlow />
+        </div>
+      </div>
+    </section>
+
+    <!-- Teaching -->
+    <section class="marketing-section marketing-section--wash">
+      <div class="marketing-shell marketing-grid-2">
+        <DemoTeachingBoard />
+        <div>
+          <h2 class="marketing-h2">{{ copy.teaching.title }}</h2>
+          <p class="marketing-body">{{ copy.teaching.body }}</p>
+          <NuxtLink to="/features/teaching" class="marketing-link home-link">Teaching tools</NuxtLink>
+        </div>
+      </div>
+    </section>
+
+    <!-- Learner -->
+    <section class="marketing-section">
+      <div class="marketing-shell marketing-grid-2">
+        <div>
+          <h2 class="marketing-h2">{{ copy.learner.title }}</h2>
+          <p class="marketing-body">{{ copy.learner.body }}</p>
+          <NuxtLink to="/learners" class="marketing-link home-link">For learners</NuxtLink>
+        </div>
+        <DemoLearnerPhone />
+      </div>
+    </section>
+
+    <!-- Playback -->
+    <section class="marketing-section marketing-section--paper">
+      <div class="marketing-shell marketing-grid-2 marketing-grid-2--reverse">
+        <div>
+          <h2 class="marketing-h2">{{ copy.playback.title }}</h2>
+          <p class="marketing-body">{{ copy.playback.body }}</p>
+        </div>
+        <DemoPlayback />
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section class="marketing-section">
+      <div class="marketing-shell marketing-grid-2">
+        <div>
+          <h2 class="marketing-h2">{{ copy.progress.title }}</h2>
+          <p class="marketing-body">{{ copy.progress.body }}</p>
+          <NuxtLink to="/features/progress" class="marketing-link home-link">Progress tracking</NuxtLink>
+        </div>
+        <DemoProgressTimeline />
+      </div>
+    </section>
+
+    <!-- Money -->
+    <section class="marketing-section marketing-section--wash">
+      <div class="marketing-shell marketing-grid-2 marketing-grid-2--reverse">
+        <div>
+          <h2 class="marketing-h2">{{ copy.money.title }}</h2>
+          <p class="marketing-body">{{ copy.money.body }}</p>
+          <NuxtLink to="/features/money" class="marketing-link home-link">Money overview</NuxtLink>
+        </div>
+        <DemoMoneyOverview />
+      </div>
+    </section>
+
+    <!-- Connection -->
+    <section class="marketing-section">
+      <div class="marketing-shell">
+        <h2 class="marketing-h2">{{ copy.connection.title }}</h2>
+        <p class="marketing-body home-narrow">{{ copy.connection.body }}</p>
+        <div class="home-spacer">
+          <DemoConnectionSplit />
+        </div>
+      </div>
+    </section>
+
+    <!-- Beta CTA -->
+    <section class="marketing-section marketing-section--paper home-cta">
+      <div class="marketing-shell home-cta__inner">
+        <h2 class="marketing-h2">{{ copy.beta.title }}</h2>
+        <p class="marketing-body">{{ copy.beta.body }}</p>
+        <div class="marketing-actions">
+          <NuxtLink :to="site.cta.primaryTo" class="marketing-btn marketing-btn--primary">
+            {{ site.cta.primary }}
+          </NuxtLink>
+          <NuxtLink to="/pricing" class="marketing-btn marketing-btn--ghost">Pricing</NuxtLink>
+        </div>
+      </div>
+    </section>
+  </div>
 </template>
 
 <script setup lang="ts">
-type HealthResponse = {
-  status: string
-  service: string
-  database: string
-}
+import { homeCopy as copy } from '~/marketing/content/copy/home'
+import { marketingSite as site } from '~/marketing/content/site'
 
-const healthState = ref<'loading' | 'ok' | 'error'>('loading')
-const healthLabel = computed(() => {
-  if (healthState.value === 'loading') return 'Checking…'
-  if (healthState.value === 'ok') return 'Connected'
-  return 'Unavailable'
-})
+definePageMeta({ layout: 'marketing' })
 
-onMounted(async () => {
-  try {
-    const data = await $fetch<HealthResponse>('/api/health')
-    healthState.value = data.status === 'ok' && data.database === 'ok' ? 'ok' : 'error'
-  } catch {
-    healthState.value = 'error'
-  }
+useMarketingSeo({
+  title: 'OwnLane — Run your driving school. Keep your independence.',
+  description:
+    'Diary, pupils, lessons, progress and money for independent UK driving instructors. A proper learner portal for your pupils.',
+  path: '/',
 })
 </script>
 
 <style scoped>
-.panel {
-  background: var(--surface-card);
-  border: 1px solid var(--color-frost-green);
-  border-radius: var(--radius-cards);
-  box-shadow: var(--shadow-card);
-  padding: var(--card-padding);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-16);
-  max-width: 560px;
-}
-
-.panel__eyebrow {
-  font-family: var(--font-martian-mono);
-  font-size: var(--text-caption-mono);
-  line-height: var(--leading-caption-mono);
-  letter-spacing: var(--tracking-caption-mono);
-  text-transform: uppercase;
-  color: var(--color-ink-black);
-  opacity: 0.6;
-}
-
-.panel__title {
-  font-size: var(--text-heading-sm);
-  line-height: var(--leading-heading-sm);
-  letter-spacing: var(--tracking-heading-sm);
-}
-
-.panel__copy {
-  font-size: var(--text-body-sm);
-  line-height: var(--leading-body-sm);
-  max-width: 40ch;
-}
-
-.panel__status {
-  display: inline-flex;
+.home-hero__grid {
+  display: grid;
+  gap: var(--spacing-40);
   align-items: center;
-  gap: var(--spacing-12);
-  align-self: flex-start;
-  padding: var(--spacing-8) var(--spacing-16);
-  background: var(--surface-wash);
-  border-radius: var(--radius-tags);
+  width: min(100% - var(--spacing-32), var(--marketing-wide));
+  margin-inline: auto;
 }
 
-.panel__status-label {
-  font-family: var(--font-martian-mono);
-  font-size: var(--text-caption-mono);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caption-mono);
-  opacity: 0.7;
+@media (min-width: 1024px) {
+  .home-hero__grid {
+    grid-template-columns: 1fr 1.1fr;
+    gap: var(--spacing-48);
+  }
 }
 
-.panel__status-value[data-state='ok'] {
-  color: var(--color-ownlane-green);
+.home-narrow {
+  max-width: 52ch;
 }
 
-.panel__status-value[data-state='error'] {
-  color: var(--color-marker-red);
+.home-spacer {
+  margin-top: var(--spacing-32);
 }
 
-.panel__cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-8);
-  align-self: flex-start;
-  margin-top: var(--spacing-8);
-  min-height: 48px;
-  padding: 12px 24px;
-  border-radius: var(--radius-buttons);
-  background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
-  font-size: var(--text-body-sm);
-  box-shadow: var(--shadow-button);
+.home-link {
+  display: inline-block;
+  margin-top: var(--spacing-16);
+}
+
+.home-cta__inner {
+  max-width: 640px;
+}
+
+.marketing-grid-2__visual {
+  min-width: 0;
 }
 </style>

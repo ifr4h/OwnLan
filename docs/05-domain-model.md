@@ -37,8 +37,18 @@ Organisation, instructor, learner, time, duration, pickup/dropoff,
 status, price, payment state, package allocation,
 notes/progress/cancellation metadata.
 
-Possible states: scheduled, completed, cancelled_by_learner,
-cancelled_by_instructor, no_show.
+Possible states: scheduled, completed, cancelled, no_show.
+
+**No-show semantics:** A no-show means teaching did not take place. It must
+not create progress evidence, skills, learner recap, route playback, or
+teaching-hour totals. Financial outcome is separate (`settlement` on the
+lesson): waived (no charge), outstanding (amount due), package (explicit
+credit consumption), or paid. Instructors choose charge vs waive at mark
+time; package credit is never consumed silently.
+
+**Cancellation charging:** Cancelled lessons may optionally create the same
+financial outcomes without completing the lesson. Future cancellations may
+feed empty-seat recovery; past no-shows do not.
 
 ## AvailabilityRule
 
@@ -85,6 +95,24 @@ state.
 ## Audit
 
 Important for financial adjustments, permissions and sensitive changes.
+
+## Learner portal account
+
+One portal account per learner. Credentials are personal — not shared with
+family, household members or payment helpers. See
+`17-companion-access-decision.md`.
+
+## Companion (deferred)
+
+Internal umbrella for purpose-limited trusted access (future **Payment
+contact**, **Practice companion**). Broad Companion product is not
+exposed in beta. Tables `companion_accounts` and `learner_companions`
+exist; HTTP and UI are gated. Not a second learner product.
+
+## Temporary share (future practice)
+
+Scoped, expiring share links for one-off practice help — separate from
+ongoing Companion identity. See `TemporaryShareService`.
 
 ## Key modelling rule
 

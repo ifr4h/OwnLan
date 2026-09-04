@@ -21,7 +21,7 @@ UK operating platform for independent driving instructors.
 # 1. Database
 docker compose up -d
 
-# 2. API env (already present if you cloned with examples applied)
+# 2. API env
 cp apps/api/.env.example apps/api/.env
 
 # 3. Web env
@@ -30,6 +30,9 @@ cp apps/web/.env.example apps/web/.env
 # 4. Install dependencies (if needed)
 cd apps/api && composer install
 cd ../web && npm install
+
+# 5. Run migrations
+cd ../api && php yii migrate --interactive=0
 ```
 
 ## Run locally
@@ -49,12 +52,52 @@ cd apps/web
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-Health check: [http://localhost:8080/health](http://localhost:8080/health)  
-Proxied from the web app: [http://localhost:3000/api/health](http://localhost:3000/api/health)
+Health: [http://127.0.0.1:8080/health](http://127.0.0.1:8080/health)  
+Proxied: [http://127.0.0.1:3000/api/health](http://127.0.0.1:3000/api/health)
+
+## Demo data
+
+Seed a realistic UK instructor account (pupils, diary, waiting list, intakes, packages, expenses):
+
+```bash
+cd apps/api
+php yii demo/seed --fresh=1
+```
+
+Sign in at [http://127.0.0.1:3000/login](http://127.0.0.1:3000/login) — one form routes you to the right app:
+
+| Role | Email | Password | Opens |
+|------|-------|----------|-------|
+| Instructor | `demo` | `demo` | Today |
+| Learner (Amina) | `amina.hassan@example.com` | `learnerpass1` | Learner portal |
+
+Companion demo accounts (`fatima.hassan@example.com`, `yusuf.hassan@example.com`) are seeded for future development but the broad Companion product is **not exposed** in beta. See `docs/17-companion-access-decision.md`.
+
+Legacy URLs `/portal/login` and `/companion/login` redirect to `/login`.
+
+Re-run without `--fresh` to refresh demo data while keeping the same login.
+
+## Tests
+
+```bash
+# One-time test DB
+docker exec ownlane-postgres psql -U ownlane -d ownlane -c "CREATE DATABASE ownlane_test;"
+cd apps/api
+DB_DSN='pgsql:host=127.0.0.1;port=5432;dbname=ownlane_test' php yii migrate --interactive=0
+
+vendor/bin/codecept run Unit --env php-builtin
+vendor/bin/codecept run Functional AuthCest --env php-builtin
+```
 
 ## Current milestone
 
-Step 1 only: repo + runtimes + empty instructor shell.  
-Auth, organisations, pupils and lessons are not built yet.
+Instructor PWA with offline-capable Today + lesson completion:
+
+- installable app shell (manifest + service worker)
+- IndexedDB cache for today’s lessons / related pupils
+- local-first complete with notes, summary, next focus + outbox sync
+- booking suggestions from pupil history
+
+See `docs/12-offline-sync.md`.

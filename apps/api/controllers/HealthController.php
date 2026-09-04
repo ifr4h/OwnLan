@@ -40,15 +40,23 @@ class HealthController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
 
         $exception = Yii::$app->errorHandler->exception;
-        $status = $exception && method_exists($exception, 'statusCode')
-            ? (int) $exception->statusCode
-            : 500;
+        $status = 500;
+        if ($exception instanceof \yii\web\HttpException) {
+            $status = (int) $exception->statusCode;
+        }
 
         Yii::$app->response->statusCode = $status ?: 500;
 
+        $message = 'Unexpected error';
+        if ($exception instanceof \yii\web\HttpException) {
+            $message = $exception->getMessage() ?: $message;
+        } elseif (YII_DEBUG && $exception !== null) {
+            $message = $exception->getMessage() ?: $message;
+        }
+
         return [
             'status' => 'error',
-            'message' => $exception?->getMessage() ?: 'Unexpected error',
+            'message' => $message,
         ];
     }
 }

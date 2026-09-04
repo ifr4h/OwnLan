@@ -51,15 +51,20 @@ No direct HMRC submission.
 
 ## Later payments
 
--   payment links
--   cards
--   reconciliation
--   package purchase
--   receipts
+Implemented in Payments 2.0 — see `docs/26-payments-2.md`:
+
+-   Stripe Connect Express (card, Apple Pay, Google Pay via hosted Checkout)
+-   learner portal checkout for outstanding balance and packages
+-   payment request links (guest-scoped)
+-   pay-before-book with booking holds
+-   refunds (full, instructor-initiated)
+-   webhook idempotency and audit trail
+
+Still later:
+
 -   deposits
--   cancellation charges
--   reminders
 -   Pay by Bank/Open Banking
+-   automatic bank-transfer reconciliation
 
 ## Later finance
 

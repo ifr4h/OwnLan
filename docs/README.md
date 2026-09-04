@@ -27,6 +27,19 @@ Instructor-facing positioning:
 9.  `09-brand-company.md`
 10. `10-cursor-rules.md`
 11. `11-research-sources.md`
+12. `12-offline-sync.md`
+13. `13-learner-routes-maps.md`
+14. `14-learning-engine.md`
+15. `15-learning-engine-costs.md`
+16. `DESIGN.md`
+17. `17-companion-access-decision.md` — **canonical Companion / learner identity rules**
+18. `18-competitive-baseline-audit.md` — **competitive floor + gap matrix + build sequence**
+19. `19-auth-recovery-invites.md` — **password reset + portal invite delivery**
+20. `20-mock-test-studio.md` — **Mock Test Studio + Progress 2.0**
+21. `22-accounts-2.md` — **Accounts 2.0 (vehicles, mileage, goals, receipts)**
+22. `23-calendar-search-exports.md` — **iCal feed, global search, data export**
+23. `24-public-profiles-enquiries.md` — **public profile, enquiry pipeline**
+24. `25-public-website.md` — **instructor public website 2.0**
 
 ## Current build decision
 

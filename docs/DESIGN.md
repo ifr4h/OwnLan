@@ -18,123 +18,52 @@ and unmistakably creative.
 
 ## Tokens --- Colors
 
+Inspired by the Tapdaa lime / forest / mint palette
+(https://www.tapdaa.com/). Values below are the **exact** hex codes
+measured from Tapdaa’s Framer tokens / CSS — not approximations.
+
   --------------------------------------------------------------------------------
   Name             Value               Token                      Role
   ---------------- ------------------- -------------------------- ----------------
-  OwnLane Green    `#168B55`           `--color-ownlane-green`    Violet
-                                                                  supporting
-                                                                  accent for
-                                                                  decorative
-                                                                  details and
-                                                                  low-frequency
-                                                                  emphasis. Do not
-                                                                  promote it to
-                                                                  the primary CTA
-                                                                  color
+  Lime             `#c1f48f`           `--color-ownlane-green`    Brand mark,
+                                                                  chips, accent
+                                                                  shadow
 
-  Ink Black        `#111118`           `--color-ink-black`        Primary text,
-                                                                  dark secondary
-                                                                  buttons, icon
-                                                                  strokes,
-                                                                  hairline borders
-                                                                  --- warmer than
-                                                                  pure black,
-                                                                  reads as ink
-                                                                  rather than void
+  Forest ink       `#1e2c0f`           `--color-ink-black`        Primary text
+                                                                  rgb(30, 44, 15)
 
-  Paper White      `#ffffff`           `--color-paper-white`      Card surfaces,
-                                                                  elevated panels,
-                                                                  button text on
-                                                                  dark fills, page
-                                                                  sections that
-                                                                  need to lift off
-                                                                  the pale-green
-                                                                  canvas
+  Black            `#000000`           `--color-carbon`           Primary CTA fill
+                                                                  (Tapdaa buttons)
 
-  Chalk Green      `#F3F8F4`           `--color-chalk-green`      Dominant page
-                                                                  canvas --- a
-                                                                  barely-there
-                                                                  blue tint that
-                                                                  prevents the
-                                                                  page from
-                                                                  feeling clinical
-                                                                  and ties the
-                                                                  scattered green
-                                                                  shapes to the
-                                                                  background
+  White            `#ffffff`           `--color-paper-white`      Cards / surfaces
 
-  Frost Green      `#E2F0E7`           `--color-frost-green`      Secondary
-                                                                  surface wash,
-                                                                  input field
-                                                                  backgrounds,
-                                                                  footer tint ---
-                                                                  a step deeper
-                                                                  than the canvas
-                                                                  to create soft
-                                                                  layering without
-                                                                  shadows
+  Canvas           `#f7faf4`           `--color-chalk-green`      Page background
 
-  Carbon           `#000000`           `--color-carbon`           Dark supporting
-                                                                  neutral for
-                                                                  text, icons, and
-                                                                  strong contrast.
-                                                                  Do not promote
-                                                                  it to the
-                                                                  primary CTA
-                                                                  color
+  Mint wash        `#eef8e4`           `--color-frost-green`      Soft wash
 
-  Marker Red       `#ff4141`           `--color-marker-red`       Decorative shape
-                                                                  fill --- the
-                                                                  large red
-                                                                  semicircle, star
-                                                                  bursts, and
-                                                                  accent blobs
-                                                                  scattered
-                                                                  through the
-                                                                  decorative layer
+  Border wash      `#eff2ed`           `--color-border`           Borders / sidebar
 
-  Hi-Yellow        `#ffda00`           `--color-hi-yellow`        Decorative shape
-                                                                  fill --- the
-                                                                  yellow pentagon
-                                                                  and sunny
-                                                                  accents in the
-                                                                  cutout
-                                                                  composition;
-                                                                  also used as a
-                                                                  section wash
-                                                                  behind featured
-                                                                  content
+  Muted            `#777a74`           `--color-muted`            Secondary copy
 
-  Soft Sage        `#A8D5B5`           `--color-soft-sage`        Decorative shape
-                                                                  fill --- soft
-                                                                  sage-green
-                                                                  circles and
-                                                                  cloud forms in
-                                                                  the scattered
-                                                                  cutout scene
+  Olive            `#3e4734`           `--color-olive`            Secondary text
 
-  Bubblegum Pink   `#ffbac4`           `--color-bubblegum-pink`   Red supporting
-                                                                  accent for
-                                                                  decorative
-                                                                  details and
-                                                                  low-frequency
-                                                                  emphasis.
+  Soft sage        `#a9df74`           `--color-soft-sage`        Deeper lime
+                                                                  rgb(169, 223, 116)
 
-  Jelly Green      `#16ab59`           `--color-jelly-green`      Decorative shape
-                                                                  fill --- green
-                                                                  triangle accents
-                                                                  in the scattered
-                                                                  cutout scene
+  Lilac            `#e3a6ff`           `--color-lilac`            Price cards /
+                                                                  featured surfaces
+                                                                  rgb(227, 166, 255)
 
-  Sunbeam          `#ffe54d`           `--color-sunbeam`          Decorative shape
-                                                                  fill --- a
-                                                                  slightly warmer
-                                                                  yellow variant
-                                                                  for layering
-                                                                  against
-                                                                  Hi-Yellow in the
-                                                                  cutout
-                                                                  composition
+  Lilac deep       `#d399ed`           `--color-lilac-deep`       Secondary CTA /
+                                                                  “Order now” style
+                                                                  rgb(211, 153, 237)
+
+  Teal             `#8ff4e2`           `--color-teal`             Decorative accent
+                                                                  rgb(143, 244, 226)
+
+  Near black       `#101820`           `--color-near-black`       Supporting dark
+
+  Paper soft       `#fefffc`           `--color-paper-soft`       Soft white panels
   --------------------------------------------------------------------------------
 
 ## Tokens --- Typography
@@ -547,19 +476,21 @@ shadow is the only thing telling you which layer is on top.
 
 ``` css
 :root {
-  /* Colors */
-  --color-ownlane-green: #168B55;
-  --color-ink-black: #111118;
+  /* Colors — exact Tapdaa values */
+  --color-ownlane-green: #c1f48f;
+  --color-ink-black: #1e2c0f;
   --color-paper-white: #ffffff;
-  --color-chalk-green: #F3F8F4;
-  --color-frost-green: #E2F0E7;
+  --color-chalk-green: #f7faf4;
+  --color-frost-green: #eef8e4;
   --color-carbon: #000000;
-  --color-marker-red: #ff4141;
-  --color-hi-yellow: #ffda00;
-  --color-soft-sage: #A8D5B5;
-  --color-bubblegum-pink: #ffbac4;
-  --color-jelly-green: #16ab59;
-  --color-sunbeam: #ffe54d;
+  --color-olive: #3e4734;
+  --color-muted: #777a74;
+  --color-border: #eff2ed;
+  --color-soft-sage: #a9df74;
+  --color-lilac: #e3a6ff;
+  --color-teal: #8ff4e2;
+  --color-near-black: #101820;
+  --color-paper-soft: #fefffc;
 
   /* Typography — Font Families */
   --font-haas-grot-disp: 'Haas Grot Disp', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -639,9 +570,9 @@ shadow is the only thing telling you which layer is on top.
   --radius-buttons: 48px;
 
   /* Surfaces */
-  --surface-chalk-green-canvas: #F3F8F4;
+  --surface-chalk-green-canvas: #f7faf4;
   --surface-paper-white-card: #ffffff;
-  --surface-frost-green-wash: #E2F0E7;
+  --surface-frost-green-wash: #eef8e4;
   --surface-bubblegum-section: #ffbac4;
   --surface-hi-yellow-section: #ffda00;
 }
@@ -651,19 +582,21 @@ shadow is the only thing telling you which layer is on top.
 
 ``` css
 @theme {
-  /* Colors */
-  --color-ownlane-green: #168B55;
-  --color-ink-black: #111118;
+  /* Colors — exact Tapdaa values */
+  --color-ownlane-green: #c1f48f;
+  --color-ink-black: #1e2c0f;
   --color-paper-white: #ffffff;
-  --color-chalk-green: #F3F8F4;
-  --color-frost-green: #E2F0E7;
+  --color-chalk-green: #f7faf4;
+  --color-frost-green: #eef8e4;
   --color-carbon: #000000;
-  --color-marker-red: #ff4141;
-  --color-hi-yellow: #ffda00;
-  --color-soft-sage: #A8D5B5;
-  --color-bubblegum-pink: #ffbac4;
-  --color-jelly-green: #16ab59;
-  --color-sunbeam: #ffe54d;
+  --color-olive: #3e4734;
+  --color-muted: #777a74;
+  --color-border: #eff2ed;
+  --color-soft-sage: #a9df74;
+  --color-lilac: #e3a6ff;
+  --color-teal: #8ff4e2;
+  --color-near-black: #101820;
+  --color-paper-soft: #fefffc;
 
   /* Typography */
   --font-haas-grot-disp: 'Haas Grot Disp', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -725,3 +658,57 @@ shadow is the only thing telling you which layer is on top.
   --radius-full-4: 5000px;
 }
 ```
+
+## Application UI (instructor product)
+
+Marketing pages may use the decorative cutout layer and larger display sizes.
+The instructor app stays calmer and denser while using the same brand colours.
+
+### App layout
+
+- Desktop (≥900px): compact left sidebar (Today, Pupils, Diary, Money + Settings), main canvas
+- Mobile: sticky top brand bar + 5-column bottom tabs (Today, Pupils, Diary, Money, New)
+- Content max-width for operational pages: ~720px (`--content-max-width`); diary/money may use `--content-wide-max`
+
+### App type roles
+
+| Role | Use |
+|------|-----|
+| Page title | Haas Disp ~24–28px |
+| Section title | Haas Disp ~22px |
+| Metric | Haas Disp ~32px, tabular nums |
+| Body / controls | Haas Text 16px |
+| Meta / labels | 13px muted — prefer readable text over mono for ops chrome |
+| Caption mono | Sparingly (tags), not for navigation |
+
+### App surfaces
+
+| Surface | Token / value |
+|---------|----------------|
+| Canvas | `--color-chalk-green` |
+| Sidebar | soft frost wash (`--surface-sidebar`) |
+| Card | paper white + 1px frost border + hard 1px offset shadow |
+| Soft panel | frost wash, no hard shadow |
+| List rows | flush panel with hairline dividers (not a card per row) |
+
+### Semantic meaning (not decorative)
+
+| Meaning | Wash | Text |
+|---------|------|------|
+| Success | `--color-success-wash` | OwnLane Green |
+| Warning | `--color-warning-wash` | `--color-warning` |
+| Danger | `--color-danger-wash` | `--color-danger` |
+
+Do not use Hi-Yellow / Marker Red as operational alert fills — those remain decorative accents for marketing.
+
+### Controls
+
+- Inputs: pill radius, paper fill, frost border, green focus ring
+- Textareas: `--radius-textarea` (16px), not full pill
+- Primary CTA: OwnLane Green pill + hard ink offset shadow
+- Ghost: hairline border, no shadow
+- Pupil pickers: searchable combobox — never a long native `<select>`
+
+### Density
+
+Operational screens should feel efficient. Prefer section gap ~28px and card padding ~20px over marketing section gaps (80px).

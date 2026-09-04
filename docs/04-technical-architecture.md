@@ -72,8 +72,11 @@ resolve identity, active organisation and permission.
 
 ## Offline
 
-Native instructor app later should cache today's diary/pupil essentials
-and queue lesson completion, notes and progress safely.
+Instructor web is an installable PWA. Operational teaching data (Today,
+relevant pupils/lessons) is cached in IndexedDB. Lesson completion and
+notes sync through a local outbox. See `docs/12-offline-sync.md`.
+
+Service worker caches the application shell only — never `/api/**`.
 
 ## Application events
 
@@ -91,3 +94,12 @@ lock-in would be expensive.
 
 Design instructor interaction for use while safely parked, not while
 driving.
+
+## Calendar, search & export
+
+See `docs/23-calendar-search-exports.md` for:
+
+- iCal subscription token security and privacy modes
+- Global search scope and tenant isolation
+- CSV export safety (formula injection protection)
+- Accountant pack contents

@@ -10,8 +10,15 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
+    "chart.js": "^4.5.1",
+    "leaflet": "^1.9.4",
     "nuxt": "^4.5.2",
     "vue": "^3.5.42",
+    "vue-chartjs": "^5.3.4",
     "vue-router": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.22",
+    "@vite-pwa/nuxt": "^1.1.1"
   }
 }

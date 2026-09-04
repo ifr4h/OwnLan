@@ -8,6 +8,11 @@ export type AuthOrganisation = {
   id: number
   name: string
   timezone: string
+  default_lesson_duration_minutes?: number
+  default_hourly_rate_pence?: number | null
+  work_days?: number[]
+  work_start_time?: string
+  work_end_time?: string
 }
 
 export type AuthMembership = {
@@ -24,6 +29,7 @@ export type MeResponse = {
   organisation: AuthOrganisation | null
   membership: AuthMembership | null
   instructor: AuthInstructor | null
+  onboarding?: import('./useOnboarding').OnboardingStatus
 }
 
 export function useAuth() {
@@ -33,14 +39,7 @@ export function useAuth() {
   const isAuthenticated = computed(() => me.value !== null)
 
   async function api<T>(path: string, options: Parameters<typeof $fetch<T>>[1] = {}): Promise<T> {
-    return await $fetch<T>(`/api${path}`, {
-      ...options,
-      credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        ...(options?.headers ?? {}),
-      },
-    })
+    return await apiFetch<T>(path, options)
   }
 
   async function fetchMe(): Promise<MeResponse | null> {

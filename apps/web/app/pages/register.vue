@@ -2,7 +2,9 @@
   <section class="card">
     <p class="card__eyebrow">Create account</p>
     <h1 class="card__title">Start teaching with OwnLane</h1>
-    <p class="card__copy">Just your name, email and a password. We’ll set up your school for you.</p>
+    <p class="card__copy">
+      Just your name, email and a password. We’ll get you to your first lesson without a long setup.
+    </p>
 
     <form class="form" @submit.prevent="onSubmit">
       <label class="field">

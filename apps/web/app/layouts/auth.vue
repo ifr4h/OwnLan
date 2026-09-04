@@ -1,8 +1,7 @@
 <template>
   <div class="auth">
     <header class="auth__brand">
-      <span class="auth__mark" aria-hidden="true" />
-      <span class="auth__wordmark">OwnLane</span>
+      <OlBrand />
     </header>
     <main class="auth__main">
       <slot />
@@ -15,27 +14,15 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--surface-canvas);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(226, 240, 231, 0.9), transparent 70%),
+    var(--surface-canvas);
 }
 
 .auth__brand {
   display: flex;
   align-items: center;
-  gap: var(--spacing-12);
   padding: var(--spacing-24) var(--spacing-20);
-}
-
-.auth__mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--color-ownlane-green);
-}
-
-.auth__wordmark {
-  font-family: var(--font-haas-grot-disp);
-  font-size: var(--text-heading-sm);
-  letter-spacing: var(--tracking-heading-sm);
 }
 
 .auth__main {

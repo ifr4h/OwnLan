@@ -33,7 +33,7 @@ class User extends ActiveRecord implements IdentityInterface
         return [
             [['email', 'password_hash', 'name', 'auth_key', 'created_at', 'updated_at'], 'required'],
             [['email', 'name'], 'string', 'max' => 255],
-            ['email', 'email'],
+            // Format is enforced on public registration; local demo logins may use a short id.
             ['email', 'unique'],
             ['auth_key', 'string', 'max' => 32],
         ];

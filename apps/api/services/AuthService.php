@@ -67,7 +67,13 @@ class AuthService
 
             $organisation = new Organisation();
             $organisation->name = $this->defaultOrganisationName($name);
-            $organisation->timezone = 'Europe/London';
+            $organisation->timezone = Organisation::DEFAULT_TIMEZONE;
+            $organisation->default_hourly_rate_pence = Organisation::DEFAULT_HOURLY_RATE_PENCE;
+            $organisation->default_lesson_duration_minutes = Organisation::DEFAULT_DURATION_MINUTES;
+            $organisation->contact_email = $email;
+            $organisation->work_days = json_encode(Organisation::DEFAULT_WORK_DAYS, JSON_THROW_ON_ERROR);
+            $organisation->work_start_time = Organisation::DEFAULT_WORK_START;
+            $organisation->work_end_time = Organisation::DEFAULT_WORK_END;
             $organisation->created_at = $now;
             $organisation->updated_at = $now;
             if (!$organisation->save()) {
@@ -176,6 +182,13 @@ class AuthService
                 'id' => (int) $organisation->id,
                 'name' => $organisation->name,
                 'timezone' => $organisation->timezone,
+                'default_lesson_duration_minutes' => $organisation->defaultLessonDurationMinutes(),
+                'default_hourly_rate_pence' => $organisation->default_hourly_rate_pence !== null
+                    ? (int) $organisation->default_hourly_rate_pence
+                    : null,
+                'work_days' => $organisation->workDays(),
+                'work_start_time' => $organisation->workStartTime(),
+                'work_end_time' => $organisation->workEndTime(),
             ] : null,
             'membership' => $membership ? [
                 'role' => $membership->role,
@@ -184,11 +197,18 @@ class AuthService
                 'id' => (int) $instructor->id,
                 'display_name' => $instructor->display_name,
             ] : null,
+            'onboarding' => (new OnboardingService())->statusFor($organisation, $instructor),
         ];
     }
 
     private function loginUser(User $user): void
     {
+        if (Yii::$app->has('portalUser')) {
+            Yii::$app->portalUser->logout();
+        }
+        if (Yii::$app->has('companionUser')) {
+            Yii::$app->companionUser->logout();
+        }
         Yii::$app->user->login($user, 0);
         TenantContext::bootstrapFromUser($user);
     }
