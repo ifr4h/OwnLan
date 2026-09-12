@@ -22,6 +22,8 @@ use app\models\LearnerSkillProgress;
 use app\models\LearnerSkillSelfAssessment;
 use app\models\MockTest;
 use app\models\MockTestFault;
+use app\models\PracticalTest;
+use app\models\PracticalTestFault;
 use app\models\LearningActivity;
 use app\models\Lesson;
 use app\models\LessonCharge;
@@ -552,6 +554,7 @@ final class DemoSeeder
 
         $this->seedPrivatePractice($org, $amina, $todayLocal);
         $this->seedMockHistory($org, $amina, $completed, $skillsByCode);
+        $this->seedPracticalTestHistory($org, $amina);
         $this->seedCompanionsAndActivity($org, $amina, $todayLocal);
     }
 
@@ -628,6 +631,98 @@ final class DemoSeeder
             $self->recorded_at = gmdate('Y-m-d H:i:s');
             $self->created_at = gmdate('Y-m-d H:i:s');
             $this->mustSave($self);
+        }
+    }
+
+    private function seedPracticalTestHistory(Organisation $org, Learner $learner): void
+    {
+        $instructor = Instructor::findOne(['organisation_id' => (int) $org->id]);
+        if ($instructor === null) {
+            return;
+        }
+
+        $plans = [
+            [
+                'date' => gmdate('Y-m-d', strtotime('-110 days')),
+                'result' => PracticalTest::RESULT_FAIL,
+                'centre' => 'Milton Keynes',
+                'examiner_action' => false,
+                'faults' => [
+                    ['code' => 'junction_observation', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 4],
+                    ['code' => 'mirrors_before_change', 'type' => PracticalTestFault::TYPE_SERIOUS, 'count' => 1],
+                    ['code' => 'control_steering', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 2],
+                ],
+            ],
+            [
+                'date' => gmdate('Y-m-d', strtotime('-45 days')),
+                'result' => PracticalTest::RESULT_FAIL,
+                'centre' => 'Milton Keynes',
+                'examiner_action' => true,
+                'faults' => [
+                    ['code' => 'junction_observation', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 3],
+                    ['code' => 'roundabout_observation', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 2],
+                    ['code' => 'speed_appropriate', 'type' => PracticalTestFault::TYPE_SERIOUS, 'count' => 1],
+                ],
+            ],
+            [
+                'date' => gmdate('Y-m-d', strtotime('-12 days')),
+                'result' => PracticalTest::RESULT_PASS,
+                'centre' => 'Milton Keynes',
+                'examiner_action' => false,
+                'faults' => [
+                    ['code' => 'junction_observation', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 2],
+                    ['code' => 'control_moving_off', 'type' => PracticalTestFault::TYPE_DRIVING, 'count' => 1],
+                ],
+            ],
+        ];
+
+        foreach ($plans as $plan) {
+            $now = gmdate('Y-m-d H:i:s');
+            $test = new PracticalTest();
+            $test->organisation_id = (int) $org->id;
+            $test->instructor_id = (int) $instructor->id;
+            $test->learner_id = (int) $learner->id;
+            $test->test_date = $plan['date'];
+            $test->result = $plan['result'];
+            $test->test_centre = $plan['centre'];
+            $test->accompanied = true;
+            $test->examiner_action = $plan['examiner_action'];
+            $test->created_at = $now;
+            $test->updated_at = $now;
+            $this->mustSave($test);
+
+            $driving = 0;
+            $serious = 0;
+            $dangerous = 0;
+            foreach ($plan['faults'] as $f) {
+                $item = \app\components\MockFaultCatalogue::find($f['code']);
+                if ($item === null) {
+                    continue;
+                }
+                $fault = new PracticalTestFault();
+                $fault->organisation_id = (int) $org->id;
+                $fault->practical_test_id = (int) $test->id;
+                $fault->fault_type = $f['type'];
+                $fault->fault_code = $f['code'];
+                $fault->fault_label = $item['label'];
+                $fault->area = $item['area'];
+                $fault->aspect = $item['aspect'];
+                $fault->skill_code = $item['skill_code'];
+                $fault->count = (int) $f['count'];
+                $fault->created_at = $now;
+                $this->mustSave($fault);
+                if ($f['type'] === PracticalTestFault::TYPE_DRIVING) {
+                    $driving += (int) $f['count'];
+                } elseif ($f['type'] === PracticalTestFault::TYPE_SERIOUS) {
+                    $serious += (int) $f['count'];
+                } else {
+                    $dangerous += (int) $f['count'];
+                }
+            }
+            $test->driving_faults_count = $driving;
+            $test->serious_faults_count = $serious;
+            $test->dangerous_faults_count = $dangerous;
+            $this->mustSave($test);
         }
     }
 
@@ -1310,6 +1405,7 @@ final class DemoSeeder
                 'pickup' => '2 Station Road, Newport Pagnell, MK16 0AG',
                 'transmission' => 'manual',
                 'theory_status' => 'booked',
+                'theory_test_date' => $todayLocal->add(new DateInterval('P18D'))->format('Y-m-d'),
                 'next_focus' => 'Roundabouts and dual carriageways',
                 'last_summary' => 'Back after a break — rusty but improving fast.',
                 'private_notes' => 'Returning after ~8 months off. Start with assessment routes.',
@@ -1396,6 +1492,7 @@ final class DemoSeeder
                 'pickup' => '19 Watling Street, Bletchley, MK1 1BE',
                 'transmission' => 'automatic',
                 'theory_status' => 'booked',
+                'theory_test_date' => $todayLocal->add(new DateInterval('P32D'))->format('Y-m-d'),
                 'next_focus' => 'Roundabout lane discipline',
                 'last_summary' => 'Switched from another instructor — assessing baseline.',
                 'private_notes' => 'From intake. Says ~20 previous hours. Do assessment lesson first.',
@@ -1638,6 +1735,7 @@ final class DemoSeeder
         $learner->transmission = $def['transmission'] ?? null;
         $learner->theory_status = $def['theory_status'] ?? null;
         $learner->theory_pass_date = $def['theory_pass_date'] ?? null;
+        $learner->theory_test_date = $def['theory_test_date'] ?? null;
         $learner->test_date = $def['test_date'] ?? null;
         $learner->test_centre = $def['test_centre'] ?? null;
         $learner->practical_test_time = $def['practical_test_time'] ?? null;
@@ -2071,6 +2169,7 @@ final class DemoSeeder
                 'pickup' => 'Newport Pagnell MK16',
                 'transmission' => 'manual',
                 'theory_status' => 'booked',
+                'theory_test_date' => $todayLocal->add(new DateInterval('P10D'))->format('Y-m-d'),
                 'preferred_contact' => 'email',
                 'days_waiting' => 21,
                 'availability' => [[6, 'morning'], [6, 'afternoon']],

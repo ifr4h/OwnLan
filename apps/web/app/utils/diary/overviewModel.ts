@@ -399,16 +399,18 @@ function buildWeekBars(days: DiaryDay[]): WeekDayBar[] {
   }))
 }
 
-function buildMonthBars(days: DiaryDay[]): MonthWeekBar[] {
+function buildMonthBars(days: DiaryDay[], weekStartsOn = 1): MonthWeekBar[] {
   const inMonth = days.filter(d => d.in_month !== false)
   const weeks = new Map<string, { teaching: number; lessons: number; start: string }>()
+  const startIso = ((weekStartsOn - 1) % 7 + 7) % 7 // 0=Mon … 6=Sun matching (getDay()+6)%7
   for (const day of inMonth) {
     const d = parseYmd(day.date)
     if (!d) continue
     const dow = (d.getDay() + 6) % 7
-    const monday = new Date(d)
-    monday.setDate(d.getDate() - dow)
-    const key = formatYmd(monday)
+    const offset = (dow - startIso + 7) % 7
+    const weekStart = new Date(d)
+    weekStart.setDate(d.getDate() - offset)
+    const key = formatYmd(weekStart)
     const cur = weeks.get(key) || { teaching: 0, lessons: 0, start: key }
     cur.teaching += teachingMinutesForDay(day)
     cur.lessons += lessonCountForDay(day)
@@ -512,7 +514,7 @@ export function buildComparison(
         priorMinutes: prev,
         deltaMinutes: cur - prev,
         likeForLike: true,
-        likeForLikeNote: `Mon–${weekdayShort(todayYmd)}`,
+        likeForLikeNote: `${weekdayShort(current.range_start)}–${weekdayShort(todayYmd)}`,
       }
     }
     const cur = teachingInDays(current.days)
@@ -776,7 +778,7 @@ export function buildDiaryOverview(
       ? buildDayRhythm(diary.days.find(d => d.date === diary.date) || diary.days[0])
       : null,
     weekBars: mode === 'week' ? buildWeekBars(diary.days) : [],
-    monthBars: mode === 'month' ? buildMonthBars(diary.days) : [],
+    monthBars: mode === 'month' ? buildMonthBars(diary.days, diary.week_starts_on || 1) : [],
     facts: facts.slice(0, 4),
     comparison: buildComparison(diary, prior, todayYmd, extras.usualWeekdayMinutes),
     observations: rankObservations(observations, limit),

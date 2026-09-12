@@ -203,7 +203,6 @@ async function onSave(nextStatus?: 'draft' | 'published') {
 <style scoped>
 .builder {
   gap: var(--spacing-16);
-  max-width: var(--content-max-width);
 }
 
 .builder__form {
@@ -226,7 +225,7 @@ async function onSave(nextStatus?: 'draft' | 'published') {
 .field__input {
   min-height: 48px;
   padding: 10px 14px;
-  border: 1px solid var(--color-frost-green);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-small);
   background: var(--surface-canvas);
   font: inherit;

@@ -12,10 +12,29 @@ export type PortalLesson = {
   duration_label?: string
   pickup_address: string | null
   pickup_short?: string | null
+  pickup_location_id?: number | null
+  pickup_location?: {
+    id: number
+    label: string
+    icon: string
+    address: string
+  } | null
+  focus_tags?: string[]
   status: string
   learner_summary: string | null
   next_focus: string | null
   skills?: string[]
+  cancellation?: {
+    allowed: boolean
+    sufficient_notice: boolean
+    notice_hours: number
+    hours_until: number
+    outcome: 'full_release' | 'will_charge' | 'pending_decision'
+    reason_required: boolean
+    title: string
+    message: string
+    policy_text: string | null
+  } | null
 }
 
 export type PortalPriority = {
@@ -92,9 +111,17 @@ export type PortalPracticalTest = {
   test_date: string
   test_date_display: string
   test_centre: string | null
+  practical_test_time?: string | null
+  booking_ref?: string | null
+  cancel_by_date?: string | null
+  cancel_by_label?: string | null
   countdown_label: string
   days_until: number
   lessons_booked_before_test: number
+  hours_booked_before_test?: number | null
+  hours_booked_label?: string | null
+  syllabus_line?: string | null
+  latest_mock?: { result_label?: string; date_display?: string } | null
 }
 
 export type PortalHome = {
@@ -207,6 +234,22 @@ export type PortalProgress = {
   categories: PortalSkillCategory[]
   practised_counts: PortalPractisedCount[]
   insights: string[]
+  syllabus_percent?: number | null
+  syllabus_line?: string | null
+  next_focus?: string | null
+  went_well?: string | null
+  went_well_lesson_id?: number | null
+  learn_next?: {
+    id: number
+    code: string
+    label: string
+    rating: string | null
+  } | null
+  practical?: {
+    countdown_label: string
+    days_until: number | null
+    test_date_display: string | null
+  } | null
   booking?: {
     can_book: boolean
     booking_mode: string
@@ -430,6 +473,47 @@ export function usePortal() {
     return await apiFetch<PortalRouteDetail>(`/portal/routes/${routeId}`)
   }
 
+  async function listLessonMessages(lessonId: number) {
+    const data = await apiFetch<{ items: Array<{
+      id: number
+      lesson_id: number
+      author_role: 'instructor' | 'learner'
+      body: string
+      created_at: string
+    }> }>(`/portal/lessons/${lessonId}/messages`)
+    return data.items
+  }
+
+  async function postLessonMessage(lessonId: number, body: string) {
+    return await apiFetch<{
+      id: number
+      lesson_id: number
+      author_role: 'instructor' | 'learner'
+      body: string
+      created_at: string
+    }>(`/portal/lessons/${lessonId}/messages`, {
+      method: 'POST',
+      body: { body },
+    })
+  }
+
+  async function updateLessonPickup(
+    lessonId: number,
+    payload: { pickup_location_id?: number | null; pickup_address?: string | null },
+  ) {
+    return await apiFetch(`/portal/lessons/${lessonId}/pickup`, {
+      method: 'PUT',
+      body: payload,
+    })
+  }
+
+  async function updateLessonFocusTags(lessonId: number, focus_tags: string[]) {
+    return await apiFetch<{ focus_tags: string[] }>(`/portal/lessons/${lessonId}/focus-tags`, {
+      method: 'PUT',
+      body: { focus_tags },
+    })
+  }
+
   return {
     online,
     stale,
@@ -447,5 +531,9 @@ export function usePortal() {
     fetchRecap,
     fetchRoutes,
     fetchRoute,
+    listLessonMessages,
+    postLessonMessage,
+    updateLessonPickup,
+    updateLessonFocusTags,
   }
 }

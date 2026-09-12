@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace app\controllers;
 
+use app\services\LessonContextService;
+use app\services\LessonMessageService;
 use app\services\LessonService;
 use app\services\RecurringLessonService;
 use Yii;
@@ -14,12 +16,16 @@ class LessonController extends BaseApiController
 {
     private LessonService $lessons;
     private RecurringLessonService $recurring;
+    private LessonContextService $context;
+    private LessonMessageService $messages;
 
     public function init(): void
     {
         parent::init();
         $this->lessons = new LessonService();
         $this->recurring = new RecurringLessonService($this->lessons);
+        $this->context = new LessonContextService($this->lessons);
+        $this->messages = new LessonMessageService();
     }
 
     public function behaviors(): array
@@ -31,14 +37,19 @@ class LessonController extends BaseApiController
                     'index' => ['GET'],
                     'diary' => ['GET'],
                     'view' => ['GET'],
+                    'context' => ['GET'],
                     'create' => ['POST'],
                     'update' => ['PUT', 'PATCH'],
                     'cancel' => ['POST'],
+                    'settle-cancellation' => ['POST'],
                     'complete' => ['POST'],
                     'no-show' => ['POST'],
                     'recurring-preview' => ['POST'],
                     'recurring-create' => ['POST'],
                     'travel-check' => ['POST'],
+                    'messages' => ['GET'],
+                    'post-message' => ['POST'],
+                    'acknowledge-pickup' => ['POST'],
                 ],
             ],
         ];
@@ -92,6 +103,11 @@ class LessonController extends BaseApiController
         return $this->lessons->get($id);
     }
 
+    public function actionContext(int $id): array
+    {
+        return $this->context->forLesson($id);
+    }
+
     public function actionCreate(): array
     {
         Yii::$app->response->statusCode = 201;
@@ -129,6 +145,11 @@ class LessonController extends BaseApiController
         return $this->recurring->cancelOccurrence($id, $scope, $body);
     }
 
+    public function actionSettleCancellation(int $id): array
+    {
+        return $this->lessons->settleCancellation($id, (array) Yii::$app->request->bodyParams);
+    }
+
     public function actionComplete(int $id): array
     {
         return $this->lessons->complete($id, (array) Yii::$app->request->bodyParams);
@@ -137,5 +158,23 @@ class LessonController extends BaseApiController
     public function actionNoShow(int $id): array
     {
         return $this->lessons->markNoShow($id, (array) Yii::$app->request->bodyParams);
+    }
+
+    public function actionMessages(int $id): array
+    {
+        return ['items' => $this->messages->listForLesson($id)];
+    }
+
+    public function actionPostMessage(int $id): array
+    {
+        Yii::$app->response->statusCode = 201;
+        $body = (array) Yii::$app->request->bodyParams;
+
+        return $this->messages->postAsInstructor($id, (string) ($body['body'] ?? ''));
+    }
+
+    public function actionAcknowledgePickup(int $id): array
+    {
+        return $this->lessons->acknowledgePickupChange($id);
     }
 }

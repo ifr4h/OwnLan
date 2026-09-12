@@ -148,6 +148,28 @@ export function useMockTest() {
     return await apiFetch(`/learners/${learnerId}/progress`)
   }
 
+  async function recordSkillRating(learnerId: number, skillId: number, rating: string) {
+    return await apiFetch(`/learners/${learnerId}/skills/${skillId}/rating`, {
+      method: 'POST',
+      body: { rating },
+    })
+  }
+
+  async function upsertProgressNote(
+    learnerId: number,
+    payload: {
+      skill_id?: number
+      category_code?: string
+      body: string
+      learner_visible?: boolean
+    },
+  ) {
+    return await apiFetch(`/learners/${learnerId}/progress-notes`, {
+      method: 'POST',
+      body: payload,
+    })
+  }
+
   async function fetchSkillDetail(learnerId: number, code: string) {
     return await apiFetch(`/learners/${learnerId}/skills/${code}`)
   }
@@ -165,6 +187,8 @@ export function useMockTest() {
     applyNextFocus,
     listForLearner,
     fetchLearnerProgress,
+    recordSkillRating,
+    upsertProgressNote,
     fetchSkillDetail,
   }
 }

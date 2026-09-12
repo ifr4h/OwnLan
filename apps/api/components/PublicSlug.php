@@ -17,7 +17,7 @@ final class PublicSlug
     public const RESERVED = [
         'admin', 'api', 'login', 'register', 'portal', 'join', 'settings', 'instructors',
         'learners', 'features', 'pricing', 'about', 'today', 'pupils', 'lessons', 'accounts',
-        'search', 'calendar', 'share', 'companion', 'public', 'health', 'exports', 'intake',
+        'services', 'search', 'calendar', 'share', 'companion', 'public', 'health', 'exports', 'intake',
         'enquiries', 'new', 'edit', 'preview', 'www', 'app', 'help', 'support', 'terms',
         'privacy', 'blog', 'marketplace',
     ];

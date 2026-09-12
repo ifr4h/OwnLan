@@ -21,9 +21,12 @@ use yii\db\ActiveRecord;
  * @property string $work_days JSON array of ISO weekdays 1=Mon … 7=Sun
  * @property string $work_start_time HH:MM
  * @property string $work_end_time HH:MM
+ * @property int $week_starts_on ISO weekday 1=Mon … 7=Sun for diary week layout
  * @property string $booking_mode manual|request|instant
  * @property string $learner_reschedule_mode manual|request|instant
  * @property bool $learner_can_cancel
+ * @property int $cancellation_notice_hours
+ * @property string $cancellation_late_policy charge|decide
  * @property int $booking_minimum_notice_hours
  * @property int $booking_advance_weeks
  * @property int $booking_slot_increment_minutes
@@ -58,6 +61,7 @@ use yii\db\ActiveRecord;
  * @property bool $profile_show_email
  * @property bool $profile_dual_controls
  * @property bool $profile_allow_indexing
+ * @property string $profile_teaches_gender
  * @property string $created_at
  * @property string $updated_at
  *
@@ -72,6 +76,7 @@ class Organisation extends ActiveRecord
     public const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5, 6];
     public const DEFAULT_WORK_START = '09:00';
     public const DEFAULT_WORK_END = '18:00';
+    public const DEFAULT_WEEK_STARTS_ON = 1; // Monday
 
     public const BOOKING_MODE_MANUAL = 'manual';
     public const BOOKING_MODE_REQUEST = 'request';
@@ -81,10 +86,40 @@ class Organisation extends ActiveRecord
     public const DEFAULT_MINIMUM_NOTICE_HOURS = 12;
     public const DEFAULT_BOOKING_ADVANCE_WEEKS = 4;
     public const DEFAULT_SLOT_INCREMENT_MINUTES = 30;
+    public const DEFAULT_CANCELLATION_NOTICE_HOURS = 48;
+
+    public const CANCELLATION_LATE_CHARGE = 'charge';
+    public const CANCELLATION_LATE_DECIDE = 'decide';
+    public const DEFAULT_CANCELLATION_LATE_POLICY = self::CANCELLATION_LATE_DECIDE;
+
+    public const TEACHES_GENDER_ANY = 'any';
+    public const TEACHES_GENDER_FEMALE = 'female';
+    public const TEACHES_GENDER_MALE = 'male';
 
     public static function tableName(): string
     {
         return '{{%organisations}}';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function teachesGenderValues(): array
+    {
+        return [
+            self::TEACHES_GENDER_ANY,
+            self::TEACHES_GENDER_FEMALE,
+            self::TEACHES_GENDER_MALE,
+        ];
+    }
+
+    public static function teachesGenderLabel(?string $value): string
+    {
+        return match ($value) {
+            self::TEACHES_GENDER_FEMALE => 'Women only',
+            self::TEACHES_GENDER_MALE => 'Men only',
+            default => 'Everyone',
+        };
     }
 
     public function rules(): array
@@ -102,6 +137,7 @@ class Organisation extends ActiveRecord
             [['work_days'], 'string', 'max' => 64],
             [['work_start_time', 'work_end_time'], 'string', 'max' => 5],
             [['work_start_time', 'work_end_time'], 'match', 'pattern' => '/^\d{2}:\d{2}$/'],
+            [['week_starts_on'], 'integer', 'min' => 1, 'max' => 7],
             [['booking_mode', 'learner_reschedule_mode'], 'string', 'max' => 16],
             [['booking_mode'], 'in', 'range' => [
                 self::BOOKING_MODE_MANUAL,
@@ -114,6 +150,11 @@ class Organisation extends ActiveRecord
                 self::BOOKING_MODE_INSTANT,
             ]],
             [['learner_can_cancel'], 'boolean'],
+            [['cancellation_notice_hours'], 'integer', 'min' => 0, 'max' => 168],
+            [['cancellation_late_policy'], 'in', 'range' => [
+                self::CANCELLATION_LATE_CHARGE,
+                self::CANCELLATION_LATE_DECIDE,
+            ]],
             [['booking_minimum_notice_hours'], 'integer', 'min' => 0, 'max' => 168],
             [['booking_advance_weeks'], 'integer', 'min' => 1, 'max' => 52],
             [['booking_slot_increment_minutes'], 'integer', 'min' => 5, 'max' => 60],
@@ -181,6 +222,19 @@ class Organisation extends ActiveRecord
         return preg_match('/^\d{2}:\d{2}$/', $t) === 1 ? $t : self::DEFAULT_WORK_END;
     }
 
+    /**
+     * ISO weekday the diary week starts on (1=Monday … 7=Sunday).
+     */
+    public function weekStartsOn(): int
+    {
+        $n = (int) ($this->week_starts_on ?? self::DEFAULT_WEEK_STARTS_ON);
+        if ($n < 1 || $n > 7) {
+            return self::DEFAULT_WEEK_STARTS_ON;
+        }
+
+        return $n;
+    }
+
     public function isWorkingDay(int $isoWeekday): bool
     {
         return in_array($isoWeekday, $this->workDays(), true);
@@ -238,6 +292,26 @@ class Organisation extends ActiveRecord
     public function learnerCanCancel(): bool
     {
         return (bool) ($this->learner_can_cancel ?? true);
+    }
+
+    public function cancellationNoticeHours(): int
+    {
+        $hours = (int) ($this->cancellation_notice_hours ?? self::DEFAULT_CANCELLATION_NOTICE_HOURS);
+
+        return max(0, min(168, $hours));
+    }
+
+    public function cancellationLatePolicy(): string
+    {
+        $policy = trim((string) ($this->cancellation_late_policy ?? ''));
+        if (!in_array($policy, [
+            self::CANCELLATION_LATE_CHARGE,
+            self::CANCELLATION_LATE_DECIDE,
+        ], true)) {
+            return self::DEFAULT_CANCELLATION_LATE_POLICY;
+        }
+
+        return $policy;
     }
 
     public function bookingMinimumNoticeHours(): int

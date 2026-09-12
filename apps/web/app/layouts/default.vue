@@ -115,14 +115,26 @@
     <!-- Mobile bottom nav -->
     <nav class="app__bottom" aria-label="Primary">
       <NuxtLink
-        v-for="item in primaryNav"
+        v-for="item in mobilePrimaryNav"
         :key="item.to"
         :to="item.to"
         class="app__tab"
+        :class="{ 'app__tab--on': isMobileNavActive(item) }"
       >
         <OlIcon :name="item.icon" :size="20" />
         <span>{{ item.label }}</span>
       </NuxtLink>
+      <button
+        class="app__tab"
+        type="button"
+        :class="{ 'app__tab--on': moreOpen || moreActive }"
+        :aria-expanded="moreOpen"
+        aria-controls="instructor-more-sheet"
+        @click="moreOpen = !moreOpen"
+      >
+        <OlIcon name="more" :size="20" />
+        <span>More</span>
+      </button>
       <button
         class="app__tab app__tab--add"
         type="button"
@@ -135,6 +147,31 @@
         <span>New</span>
       </button>
     </nav>
+
+    <div
+      v-if="moreOpen"
+      id="instructor-more-sheet"
+      class="more"
+      role="dialog"
+      aria-modal="true"
+      aria-label="More"
+    >
+      <button class="more__backdrop" type="button" aria-label="Close" @click="moreOpen = false" />
+      <div class="more__sheet">
+        <p class="more__eyebrow">More</p>
+        <NuxtLink
+          v-for="item in mobileMoreNav"
+          :key="item.to"
+          :to="item.to"
+          class="more__link"
+          @click="moreOpen = false"
+        >
+          <OlIcon :name="item.icon" :size="20" />
+          <span>{{ item.label }}</span>
+          <span class="more__chevron" aria-hidden="true">→</span>
+        </NuxtLink>
+      </div>
+    </div>
 
     <!-- Quick add sheet -->
     <div
@@ -165,6 +202,10 @@
             <OlIcon name="pupils" :size="22" />
             <span>Pupil</span>
           </NuxtLink>
+          <NuxtLink to="/services/new" class="quick__item" @click="quickOpen = false">
+            <OlIcon name="services" :size="22" />
+            <span>Service</span>
+          </NuxtLink>
           <NuxtLink to="/accounts/payments" class="quick__item" @click="quickOpen = false">
             <OlIcon name="payment" :size="22" />
             <span>Payment</span>
@@ -182,14 +223,24 @@
 </template>
 
 <script setup lang="ts">
+import {
+  instructorMobileMoreNav,
+  instructorMobilePrimaryNav,
+  instructorPrimaryNav,
+  isInstructorNavActive,
+  type InstructorNavItem,
+} from '~/utils/instructorNav'
+
 const SIDEBAR_KEY = 'ownlane.sidebar.collapsed'
 
 const { me, logout } = useAuth()
 const { clearLocalForLogout, runSync, online } = useOfflineTeaching()
+const route = useRoute()
 const loggingOut = ref(false)
 const logoutWarning = ref('')
 const quickOpen = ref(false)
 const searchOpen = ref(false)
+const moreOpen = ref(false)
 const sidebarCollapsed = ref(false)
 
 function openSearch() {
@@ -223,13 +274,17 @@ onBeforeUnmount(() => {
   }
 })
 
-const primaryNav = [
-  { to: '/today', label: 'Today', icon: 'today' as const },
-  { to: '/pupils', label: 'Pupils', icon: 'pupils' as const },
-  { to: '/teaching', label: 'Teaching', icon: 'lesson' as const },
-  { to: '/lessons', label: 'Diary', icon: 'diary' as const },
-  { to: '/accounts', label: 'Accounts', icon: 'accounts' as const },
-]
+const primaryNav = instructorPrimaryNav
+const mobilePrimaryNav = instructorMobilePrimaryNav
+const mobileMoreNav = instructorMobileMoreNav
+
+const moreActive = computed(() =>
+  mobileMoreNav.some(item => isInstructorNavActive(item, route.path)),
+)
+
+function isMobileNavActive(item: InstructorNavItem): boolean {
+  return isInstructorNavActive(item, route.path)
+}
 
 const firstName = computed(() => {
   const name = me.value?.user.name?.trim() || ''
@@ -237,9 +292,23 @@ const firstName = computed(() => {
 })
 
 watch(quickOpen, (open) => {
-  if (import.meta.client) {
-    document.body.style.overflow = open ? 'hidden' : ''
-  }
+  if (open) moreOpen.value = false
+  syncBodyScrollLock()
+})
+
+watch(moreOpen, (open) => {
+  if (open) quickOpen.value = false
+  syncBodyScrollLock()
+})
+
+function syncBodyScrollLock() {
+  if (!import.meta.client) return
+  document.body.style.overflow = quickOpen.value || moreOpen.value ? 'hidden' : ''
+}
+
+watch(() => route.path, () => {
+  moreOpen.value = false
+  quickOpen.value = false
 })
 
 onBeforeUnmount(() => {
@@ -289,7 +358,7 @@ async function onLogout() {
   justify-content: space-between;
   height: 56px;
   padding: 0 var(--spacing-16);
-  background: rgba(255, 255, 255, 0.92);
+  background: color-mix(in srgb, var(--surface-canvas) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-border);
 }
@@ -329,10 +398,10 @@ async function onLogout() {
   left: 0;
   right: 0;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 2px;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--surface-canvas) 92%, transparent);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
 }
@@ -344,7 +413,7 @@ async function onLogout() {
   justify-content: center;
   gap: 2px;
   min-height: 52px;
-  padding: 4px 2px;
+  padding: 4px 1px;
   border-radius: 14px;
   border: none;
   background: transparent;
@@ -359,7 +428,8 @@ async function onLogout() {
   background: var(--surface-wash);
 }
 
-.app__tab.router-link-active {
+.app__tab.router-link-active,
+.app__tab--on {
   color: var(--color-ownlane-green);
   background: var(--color-success-wash);
 }
@@ -376,13 +446,68 @@ async function onLogout() {
   height: 28px;
   border-radius: 50%;
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  color: var(--color-on-accent);
 }
 
 .app__quick-btn {
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  color: var(--color-on-accent);
   border-color: transparent;
+}
+
+/* More sheet (mobile) */
+.more {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-nav) + 5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.more__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(17, 17, 24, 0.35);
+}
+
+.more__sheet {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+  background: var(--surface-elevated);
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.more__eyebrow {
+  margin: 0 0 8px;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.more__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 4px;
+  text-decoration: none;
+  color: var(--color-ink-black);
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.more__chevron {
+  margin-left: auto;
+  color: var(--color-ash-mist);
 }
 
 /* Quick sheet */
@@ -460,14 +585,17 @@ async function onLogout() {
     display: flex;
     position: sticky;
     top: 0;
+    align-self: flex-start;
     z-index: var(--z-sidebar);
     flex-direction: column;
     width: var(--sidebar-width);
-    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
     padding: 20px 14px;
     background: var(--surface-sidebar);
     border-right: 1px solid var(--color-border);
     flex-shrink: 0;
+    overflow: hidden;
     transition: width var(--duration-med) var(--ease-out), padding var(--duration-med) var(--ease-out);
   }
 
@@ -504,14 +632,14 @@ async function onLogout() {
     flex-shrink: 0;
     border: 1px solid var(--color-border);
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--surface-elevated);
     color: var(--color-muted);
     cursor: pointer;
     transition: background-color var(--duration-fast) ease, color var(--duration-fast) ease;
   }
 
   .app__collapse:hover {
-    background: var(--color-paper-white);
+    background: var(--surface-card);
     color: var(--color-ink-black);
   }
 
@@ -528,6 +656,8 @@ async function onLogout() {
     flex-direction: column;
     gap: 4px;
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .app__side-link {
@@ -549,12 +679,12 @@ async function onLogout() {
   }
 
   .app__side-link:hover {
-    background: rgba(255, 255, 255, 0.65);
+    background: color-mix(in srgb, var(--color-ink-black) 7%, transparent);
   }
 
   .app__side-link.router-link-active {
     background: var(--color-ownlane-green);
-    color: var(--color-paper-white);
+    color: var(--color-on-accent);
     box-shadow: none;
   }
 
@@ -563,7 +693,7 @@ async function onLogout() {
   }
 
   .app__side-link--muted.router-link-active {
-    color: var(--color-paper-white);
+    color: var(--color-on-accent);
   }
 
   .app[data-sidebar='collapsed'] .app__side-label,
@@ -604,12 +734,14 @@ async function onLogout() {
     gap: 12px;
     margin-top: auto;
     padding-top: 16px;
+    flex-shrink: 0;
   }
 
   .app__account {
     padding: 12px 14px;
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--surface-elevated);
+    border: 1px solid var(--color-border);
   }
 
   .app[data-sidebar='collapsed'] .app__account {

@@ -1,5 +1,5 @@
 <template>
-  <section class="diary ol-page ol-page--full">
+  <section class="diary ol-page">
     <div class="toolbar" role="toolbar" aria-label="Diary">
       <div class="toolbar__left">
         <div class="toolbar__nav">
@@ -58,10 +58,11 @@
           >
             <span class="type-filter__dots" aria-hidden="true">
               <i
-                v-for="dot in filterTriggerDots"
-                :key="dot"
+                v-for="(dot, i) in filterTriggerDots"
+                :key="`${dot.kind}-${dot.tone}-${i}`"
                 class="type-filter__dot"
-                :data-tone="dot"
+                :data-tone="dot.kind === 'payment' ? dot.tone : undefined"
+                :data-area-slot="dot.kind === 'area' ? dot.tone : undefined"
               />
             </span>
             <span class="type-filter__label">{{ filterTriggerLabel }}</span>
@@ -72,20 +73,77 @@
             id="diary-type-filter"
             class="type-filter__menu"
             role="listbox"
-            aria-label="Filter diary by type"
+            :aria-label="colourMode === 'area' ? 'Colour and filter by area' : 'Colour and filter by payment'"
           >
-            <button
-              v-for="opt in filterOptions"
-              :key="opt.value"
-              class="type-filter__option"
-              type="button"
-              role="option"
-              :aria-selected="typeFilter === opt.value"
-              @click="selectTypeFilter(opt.value)"
-            >
-              <i class="type-filter__swatch" :data-tone="opt.swatch" aria-hidden="true" />
-              <span>{{ opt.label }}</span>
-            </button>
+            <div class="type-filter__mode" role="group" aria-label="Colour diary by">
+              <span class="type-filter__mode-label">Colour by</span>
+              <div class="type-filter__mode-seg">
+                <button
+                  type="button"
+                  class="type-filter__mode-btn"
+                  :class="{ 'type-filter__mode-btn--on': colourMode === 'payment' }"
+                  :aria-pressed="colourMode === 'payment'"
+                  @click="setColourMode('payment')"
+                >
+                  Payment
+                </button>
+                <button
+                  type="button"
+                  class="type-filter__mode-btn"
+                  :class="{ 'type-filter__mode-btn--on': colourMode === 'area' }"
+                  :aria-pressed="colourMode === 'area'"
+                  @click="setColourMode('area')"
+                >
+                  Area
+                </button>
+              </div>
+            </div>
+
+            <template v-if="colourMode === 'payment'">
+              <button
+                v-for="opt in filterOptions"
+                :key="opt.value"
+                class="type-filter__option"
+                type="button"
+                role="option"
+                :aria-selected="typeFilter === opt.value"
+                @click="selectTypeFilter(opt.value)"
+              >
+                <i class="type-filter__swatch" :data-tone="opt.swatch" aria-hidden="true" />
+                <span>{{ opt.label }}</span>
+              </button>
+            </template>
+            <template v-else>
+              <button
+                class="type-filter__option"
+                type="button"
+                role="option"
+                :aria-selected="areaFilter === 'all'"
+                @click="selectAreaFilter('all')"
+              >
+                <i class="type-filter__swatch" data-tone="all-areas" aria-hidden="true" />
+                <span>All areas</span>
+              </button>
+              <button
+                v-for="area in diaryAreas"
+                :key="area.key"
+                class="type-filter__option"
+                type="button"
+                role="option"
+                :aria-selected="areaFilter === area.key"
+                @click="selectAreaFilter(area.key)"
+              >
+                <i
+                  class="type-filter__swatch"
+                  :data-area-slot="String(area.slot)"
+                  aria-hidden="true"
+                />
+                <span>{{ area.label }}</span>
+              </button>
+              <p v-if="!diaryAreas.length" class="type-filter__empty">
+                Book lessons with a pickup to see areas here.
+              </p>
+            </template>
           </div>
         </div>
 
@@ -115,16 +173,20 @@
     </div>
 
     <p v-if="error" class="ol-error" role="alert">{{ error }}</p>
-    <p v-else-if="slotPick && !slotPick.pendingStartsAtLocal" class="diary__pick-banner" role="status">
+    <p
+      v-if="slotPick && !slotPick.pendingStartsAtLocal && !error"
+      class="diary__pick-banner"
+      role="status"
+    >
       Tap a free slot to
       {{ slotPick.kind === 'suggest' ? 'offer a new time' : 'move this lesson' }}.
       <button type="button" class="diary__pick-cancel" @click="onCancelPickSlot">Cancel</button>
     </p>
-    <div v-else-if="loading && !diary" class="diary__skel" aria-hidden="true">
-      <div class="ol-skeleton" style="height: 420px; width: 100%" />
+    <div v-if="loading && !diary && !error" class="diary__skel" aria-hidden="true">
+      <div class="ol-skeleton" style="height: 520px; width: 100%" />
     </div>
 
-    <template v-else-if="diary">
+    <template v-if="diary">
       <!-- MONTH -->
       <div
         v-if="view === 'month'"
@@ -133,7 +195,7 @@
       >
         <div class="month">
           <div class="month__dows" aria-hidden="true">
-            <span v-for="d in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']" :key="d">{{ d }}</span>
+            <span v-for="d in weekDayLabels" :key="d">{{ d }}</span>
           </div>
           <div class="month__grid">
             <button
@@ -168,23 +230,29 @@
           </div>
         </div>
 
-        <CalendarDiarySidePanel
-          v-if="showSidePanel"
-          ref="sidePanelRef"
-          :mode="panelMode"
-          :lesson="selectedLesson"
-          :request="selectedRequest"
-          :overview="overview"
-          :slot-pick="slotPick"
-          :flash="panelFlash"
-          @close="closePanel"
-          @select-day="onOverviewSelectDay"
-          @changed="onAppointmentChanged"
-          @start-pick-slot="onStartPickSlot"
-          @cancel-pick-slot="onCancelPickSlot"
-          @confirm-pick-slot="onConfirmPickSlot"
-          @book-next="onBookNextFromLesson"
-        />
+        <Transition name="diary-side">
+          <div v-if="showSidePanel" class="grid-wrap__side">
+              <CalendarDiarySidePanel
+              ref="sidePanelRef"
+              :mode="panelMode"
+              :lesson="selectedLesson"
+              :request="selectedRequest"
+              :block="selectedBlock"
+              :overview="overview"
+              :slot-pick="slotPick"
+              :flash="panelFlash"
+              @close="closePanel"
+              @select-day="onOverviewSelectDay"
+              @changed="onAppointmentChanged"
+              @start-pick-slot="onStartPickSlot"
+              @cancel-pick-slot="onCancelPickSlot"
+              @confirm-pick-slot="onConfirmPickSlot"
+              @book-next="onBookNextFromLesson"
+              @block-changed="onBlockChanged"
+              @block-removed="onBlockRemoved"
+            />
+          </div>
+        </Transition>
       </div>
 
       <!-- DAY / WEEK TIME GRID -->
@@ -213,36 +281,44 @@
               :work-end-time="workEnd"
               :work-days="workDays"
               :breaks="visibleBreaks"
+              :colour-mode="colourMode"
               :focus-type="typeFilter"
+              :focus-area="areaFilter"
               :select-lessons="true"
               :booking-requests="bookingRequests"
               :slot-pick-active="!!slotPick"
               @book="onSlotPick"
               @open-day="onOpenDay"
               @gap-open="onGapOpen"
-              @break-remove="onBreakRemove"
+              @select-break="onSelectBlock"
               @select-lesson="onSelectLesson"
               @select-request="onSelectRequest"
             />
           </div>
 
-          <CalendarDiarySidePanel
-            v-if="showSidePanel"
-            ref="sidePanelRef"
-            :mode="panelMode"
-            :lesson="selectedLesson"
-            :request="selectedRequest"
-            :overview="overview"
-            :slot-pick="slotPick"
-            :flash="panelFlash"
-            @close="closePanel"
-            @select-day="onOverviewSelectDay"
-            @changed="onAppointmentChanged"
-            @start-pick-slot="onStartPickSlot"
-            @cancel-pick-slot="onCancelPickSlot"
-            @confirm-pick-slot="onConfirmPickSlot"
-            @book-next="onBookNextFromLesson"
-          />
+          <Transition name="diary-side">
+            <div v-if="showSidePanel" class="grid-wrap__side">
+              <CalendarDiarySidePanel
+              ref="sidePanelRef"
+              :mode="panelMode"
+              :lesson="selectedLesson"
+              :request="selectedRequest"
+              :block="selectedBlock"
+              :overview="overview"
+              :slot-pick="slotPick"
+              :flash="panelFlash"
+              @close="closePanel"
+              @select-day="onOverviewSelectDay"
+              @changed="onAppointmentChanged"
+              @start-pick-slot="onStartPickSlot"
+              @cancel-pick-slot="onCancelPickSlot"
+              @confirm-pick-slot="onConfirmPickSlot"
+              @book-next="onBookNextFromLesson"
+              @block-changed="onBlockChanged"
+              @block-removed="onBlockRemoved"
+            />
+            </div>
+          </Transition>
         </div>
 
         <CalendarDiaryGapSheet
@@ -281,11 +357,11 @@
                 </button>
               </div>
               <label class="ol-field slot-choice__label">
-                <span class="ol-field__label">Or add a break</span>
-                <input v-model="breakLabel" class="ol-input" type="text" maxlength="40" placeholder="School run">
+                <span class="ol-field__label">Or block private time</span>
+                <input v-model="breakLabel" class="ol-input" type="text" maxlength="40" placeholder="Admin, Holiday, School run">
               </label>
-              <button class="ol-btn ol-btn--ghost ol-btn--block" type="button" @click="confirmAddBreak">
-                Add break
+              <button class="ol-btn ol-btn--ghost ol-btn--block" type="button" :disabled="blockPending" @click="confirmAddBreak">
+                {{ blockPending ? 'Saving…' : 'Block time' }}
               </button>
             </div>
           </div>
@@ -294,72 +370,84 @@
     </template>
 
     <Teleport to="body">
-      <div
-        v-if="diary && mobileOverviewOpen && overview"
-        class="overview-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Diary overview"
-      >
-        <button
-          class="overview-sheet__backdrop"
-          type="button"
-          aria-label="Close overview"
-          @click="mobileOverviewOpen = false"
-        />
-        <div class="overview-sheet__panel">
-          <div class="overview-sheet__head">
-            <p class="overview-sheet__eyebrow">Overview</p>
-            <button
-              class="overview-sheet__x"
-              type="button"
-              aria-label="Close overview"
-              @click="mobileOverviewOpen = false"
-            >
-              <OlIcon name="close" :size="16" />
-            </button>
-          </div>
-          <div class="overview-sheet__body">
-            <DiaryOverview
-              :model="overview"
-              @select-day="onOverviewSelectDay"
-            />
+      <Transition name="overview-sheet">
+        <div
+          v-if="diary && mobileOverviewOpen && overview"
+          class="overview-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Diary overview"
+        >
+          <button
+            class="overview-sheet__backdrop"
+            type="button"
+            aria-label="Close overview"
+            @click="mobileOverviewOpen = false"
+          />
+          <div class="overview-sheet__panel">
+            <div class="overview-sheet__head">
+              <p class="overview-sheet__eyebrow">Overview</p>
+              <button
+                class="overview-sheet__x"
+                type="button"
+                aria-label="Close overview"
+                @click="mobileOverviewOpen = false"
+              >
+                <OlIcon name="close" :size="16" />
+              </button>
+            </div>
+            <div class="overview-sheet__body">
+              <DiaryOverview
+                :model="overview"
+                @select-day="onOverviewSelectDay"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
     <Teleport to="body">
-      <div
-        v-if="diary && mobileLessonOpen && (selectedLesson || selectedRequest)"
-        class="overview-sheet"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="selectedRequest ? 'Lesson request' : 'Lesson'"
-      >
-        <button
-          class="overview-sheet__backdrop"
-          type="button"
-          aria-label="Close"
-          @click="closePanel"
-        />
-        <div class="overview-sheet__panel overview-sheet__panel--lesson">
-          <p v-if="panelFlash" class="overview-sheet__flash" role="status">{{ panelFlash }}</p>
-          <div class="overview-sheet__body overview-sheet__body--lesson">
-            <DiaryLessonAppointment
-              ref="mobileApptRef"
-              :lesson="selectedLesson"
-              :request="selectedRequest"
-              :slot-pick="slotPick"
-              @close="closePanel"
-              @changed="onAppointmentChanged"
-              @start-pick-slot="onStartPickSlot"
-              @cancel-pick-slot="onCancelPickSlot"
-              @confirm-pick-slot="onConfirmPickSlot"
-              @book-next="onBookNextFromLesson"
-            />
+      <Transition name="overview-sheet">
+        <div
+          v-if="diary && mobileLessonOpen && (selectedLesson || selectedRequest || selectedBlock)"
+          class="overview-sheet"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="selectedBlock ? 'Private time' : (selectedRequest ? 'Lesson request' : 'Lesson')"
+        >
+          <button
+            class="overview-sheet__backdrop"
+            type="button"
+            aria-label="Close"
+            @click="closePanel"
+          />
+          <div class="overview-sheet__panel overview-sheet__panel--lesson">
+            <p v-if="panelFlash" class="overview-sheet__flash" role="status">{{ panelFlash }}</p>
+            <div class="overview-sheet__body overview-sheet__body--lesson">
+              <DiaryBlockPanel
+                v-if="selectedBlock && panelMode === 'block'"
+                :block="selectedBlock"
+                @close="closePanel"
+                @saved="onBlockChanged"
+                @removed="onBlockRemoved"
+              />
+              <DiaryLessonAppointment
+                v-else
+                ref="mobileApptRef"
+                :lesson="selectedLesson"
+                :request="selectedRequest"
+                :slot-pick="slotPick"
+                @close="closePanel"
+                @changed="onAppointmentChanged"
+                @start-pick-slot="onStartPickSlot"
+                @cancel-pick-slot="onCancelPickSlot"
+                @confirm-pick-slot="onConfirmPickSlot"
+                @book-next="onBookNextFromLesson"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </Teleport>
   </section>
 </template>
@@ -375,16 +463,24 @@ import CalendarDiarySidePanel from '~/components/calendar/DiarySidePanel.vue'
 import CalendarDiaryGapSheet from '~/components/calendar/DiaryGapSheet.vue'
 import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
 import type {
+  BookNextPayload,
   InstructorBookingRequest,
   SlotPickState,
 } from '~/components/calendar/DiaryLessonAppointment.vue'
 import DiaryLessonAppointment from '~/components/calendar/DiaryLessonAppointment.vue'
+import DiaryBlockPanel from '~/components/calendar/DiaryBlockPanel.vue'
 import DiaryBookPopup, { type DiaryBookPreset } from '~/components/calendar/DiaryBookPopup.vue'
+import {
+  collectDiaryAreas,
+  readDiaryColourMode,
+  writeDiaryColourMode,
+  type DiaryColourMode,
+} from '~/utils/calendar/diaryAreaColour'
 
 useHead({ title: 'Diary · OwnLane' })
 
 type DiaryView = 'day' | 'week' | 'month'
-type DiarySidePanelMode = 'welcome' | 'lesson' | 'request'
+type DiarySidePanelMode = 'welcome' | 'lesson' | 'request' | 'block'
 const VIEW_KEY = 'ownlane.diary.view'
 
 const route = useRoute()
@@ -392,7 +488,7 @@ const router = useRouter()
 const { fetchDiary } = useLessons()
 const { me } = useAuth()
 const { onboarding, refresh } = useOnboarding()
-const { breaksForDates, addBreak, removeBreak } = useDiaryBreaks()
+const { breaksForDates, createBlock } = useDiaryBreaks()
 const { listPending } = useInstructorBooking()
 
 const diary = ref<DiaryResponse | null>(null)
@@ -407,12 +503,14 @@ const slotChoice = ref<{
   starts_at_local: string
   duration_minutes: number
 } | null>(null)
-const breakLabel = ref('Break')
+const breakLabel = ref('Private')
+const blockPending = ref(false)
 
 const panelOpen = ref(true)
 const panelMode = ref<DiarySidePanelMode>('welcome')
 const selectedLesson = ref<DiaryLesson | null>(null)
 const selectedRequest = ref<InstructorBookingRequest | null>(null)
+const selectedBlock = ref<import('~/composables/useDiaryBreaks').DiaryBreak | null>(null)
 const panelDismissed = ref(false)
 const mobileOverviewOpen = ref(false)
 const mobileLessonOpen = ref(false)
@@ -427,6 +525,8 @@ let flashTimer: ReturnType<typeof setTimeout> | null = null
 
 type DiaryFocusType = 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
 const typeFilter = ref<DiaryFocusType>('all')
+const areaFilter = ref<string>('all')
+const colourMode = ref<DiaryColourMode>(readDiaryColourMode())
 const typeFilterOpen = ref(false)
 const typeFilterRoot = ref<HTMLElement | null>(null)
 
@@ -435,23 +535,57 @@ const filterOptions: Array<{ value: DiaryFocusType; label: string; swatch: strin
   { value: 'paid', label: 'Paid', swatch: 'paid' },
   { value: 'unpaid', label: 'Unpaid', swatch: 'unpaid' },
   { value: 'package', label: 'Block', swatch: 'package' },
-  { value: 'break', label: 'Break', swatch: 'break' },
+  { value: 'break', label: 'Private', swatch: 'break' },
   { value: 'offer', label: 'Offer', swatch: 'offer' },
 ]
 
+const diaryAreas = computed(() => {
+  const flat = diary.value?.lessons ?? []
+  const nested = (diary.value?.days ?? []).flatMap(d => d.lessons ?? [])
+  const pickups = (flat.length ? flat : nested).map(l => l.pickup_address)
+  return collectDiaryAreas(pickups)
+})
+
 const filterTriggerDots = computed(() => {
-  if (typeFilter.value === 'all') return ['paid', 'unpaid', 'package', 'break']
-  if (typeFilter.value === 'package') return ['package']
-  return [typeFilter.value]
+  if (colourMode.value === 'area') {
+    if (areaFilter.value === 'all') {
+      return diaryAreas.value.slice(0, 4).map(a => ({ kind: 'area' as const, tone: String(a.slot) }))
+    }
+    const hit = diaryAreas.value.find(a => a.key === areaFilter.value)
+    return hit
+      ? [{ kind: 'area' as const, tone: String(hit.slot) }]
+      : [{ kind: 'area' as const, tone: '0' }]
+  }
+  if (typeFilter.value === 'all') {
+    return ['paid', 'unpaid', 'package', 'break'].map(tone => ({ kind: 'payment' as const, tone }))
+  }
+  const tone = typeFilter.value === 'package' ? 'package' : typeFilter.value
+  return [{ kind: 'payment' as const, tone }]
 })
 
 const filterTriggerLabel = computed(() => {
+  if (colourMode.value === 'area') {
+    if (areaFilter.value === 'all') return 'All areas'
+    return diaryAreas.value.find(a => a.key === areaFilter.value)?.label ?? 'Area'
+  }
   if (typeFilter.value === 'all') return 'All types'
   return filterOptions.find(o => o.value === typeFilter.value)?.label ?? 'Filter'
 })
 
+function setColourMode(next: DiaryColourMode) {
+  colourMode.value = next
+  writeDiaryColourMode(next)
+  typeFilter.value = 'all'
+  areaFilter.value = 'all'
+}
+
 function selectTypeFilter(next: DiaryFocusType) {
   typeFilter.value = next
+  typeFilterOpen.value = false
+}
+
+function selectAreaFilter(next: string) {
+  areaFilter.value = next
   typeFilterOpen.value = false
 }
 
@@ -497,6 +631,7 @@ function toggleOverviewPanel() {
   panelDismissed.value = false
   selectedLesson.value = null
   selectedRequest.value = null
+  selectedBlock.value = null
   panelMode.value = 'welcome'
   panelOpen.value = true
   slotPick.value = null
@@ -514,6 +649,7 @@ function openAppointmentPanel() {
 function onSelectLesson(lesson: DiaryLesson) {
   selectedLesson.value = lesson
   selectedRequest.value = null
+  selectedBlock.value = null
   panelMode.value = 'lesson'
   slotPick.value = null
   openAppointmentPanel()
@@ -522,6 +658,7 @@ function onSelectLesson(lesson: DiaryLesson) {
 function onSelectRequest(request: InstructorBookingRequest) {
   selectedRequest.value = request
   selectedLesson.value = null
+  selectedBlock.value = null
   panelMode.value = 'request'
   slotPick.value = null
   openAppointmentPanel()
@@ -532,6 +669,7 @@ function closePanel() {
   panelDismissed.value = true
   selectedLesson.value = null
   selectedRequest.value = null
+  selectedBlock.value = null
   panelMode.value = 'welcome'
   mobileLessonOpen.value = false
   slotPick.value = null
@@ -662,6 +800,18 @@ const workDays = computed(() =>
   || [],
 )
 
+const weekStartsOn = computed(() =>
+  diary.value?.week_starts_on
+  || me.value?.organisation?.week_starts_on
+  || 1,
+)
+
+const weekDayLabels = computed(() => {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const start = ((weekStartsOn.value - 1) % 7 + 7) % 7
+  return [...labels.slice(start), ...labels.slice(0, start)]
+})
+
 const gridDays = computed(() => {
   if (!diary.value) return []
   // Desktop week = seven day columns in one row.
@@ -677,7 +827,10 @@ const bounds = computed<GridBounds>(() => {
 
 const visibleBreaks = computed(() => {
   const dates = gridDays.value.map(d => d.date)
-  return breaksForDates(dates)
+  const fromDays = gridDays.value.flatMap(d => d.blocks || [])
+  const fromTop = diary.value?.blocks || []
+  const merged = fromDays.length ? fromDays : fromTop
+  return breaksForDates(merged, dates)
 })
 
 const nowMinutes = computed(() => {
@@ -686,16 +839,16 @@ const nowMinutes = computed(() => {
 })
 
 const weekStrip = computed(() => {
-  // Build Mon–Sun around current date for mobile strip.
   const anchor = parseYmd(date.value)
   if (!anchor) return []
-  const dow = ((anchor.getDay() + 6) % 7) // Mon=0
-  const monday = new Date(anchor)
-  monday.setDate(anchor.getDate() - dow)
+  const isoDow = ((anchor.getDay() + 6) % 7) + 1 // 1=Mon … 7=Sun
+  const offset = (isoDow - weekStartsOn.value + 7) % 7
+  const weekStart = new Date(anchor)
+  weekStart.setDate(anchor.getDate() - offset)
   const today = localToday()
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
+    const d = new Date(weekStart)
+    d.setDate(weekStart.getDate() + i)
     const ymd = formatYmd(d)
     return {
       date: ymd,
@@ -743,7 +896,7 @@ function onSlotPick(payload: { date: string; starts_at_local: string; duration_m
     starts_at_local: payload.starts_at_local,
     duration_minutes: payload.duration_minutes || 60,
   }
-  breakLabel.value = 'Break'
+  breakLabel.value = 'Private'
 }
 
 function openBookPopup(preset: DiaryBookPreset = {}) {
@@ -776,32 +929,74 @@ function confirmBookLesson() {
   })
 }
 
-function onBookNextFromLesson() {
+function onBookNextFromLesson(payload?: BookNextPayload) {
   const lesson = selectedLesson.value
   const request = selectedRequest.value
   const learnerId = lesson?.learner_id || request?.learner_id
   if (!learnerId) return
+  const suggestion = payload?.suggestion || null
   openBookPopup({
     learnerId,
-    durationMinutes: lesson?.duration_minutes || request?.duration_minutes || undefined,
-    pickup: lesson?.pickup_address || request?.pickup_address || undefined,
+    durationMinutes: suggestion?.duration_minutes
+      || lesson?.duration_minutes
+      || request?.duration_minutes
+      || undefined,
+    pickup: suggestion?.pickup_address
+      || lesson?.pickup_address
+      || request?.pickup_address
+      || undefined,
+    startsAtLocal: suggestion?.suggested_starts_at_local || undefined,
     lockPupil: true,
+    suggestion: suggestion || undefined,
   })
 }
 
-function confirmAddBreak() {
-  if (!slotChoice.value) return
-  addBreak({
-    date: slotChoice.value.date,
-    starts_at_local: slotChoice.value.starts_at_local,
-    duration_minutes: slotChoice.value.duration_minutes,
-    label: breakLabel.value,
-  })
-  slotChoice.value = null
+async function confirmAddBreak() {
+  if (!slotChoice.value || blockPending.value) return
+  blockPending.value = true
+  try {
+    await createBlock({
+      starts_at_local: slotChoice.value.starts_at_local,
+      duration_minutes: slotChoice.value.duration_minutes,
+      label: breakLabel.value,
+    })
+    slotChoice.value = null
+    setFlash('Private time blocked')
+    await load()
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : 'Could not block that time.'
+  } finally {
+    blockPending.value = false
+  }
 }
 
-function onBreakRemove(id: string) {
-  removeBreak(id)
+function onSelectBlock(item: import('~/composables/useDiaryBreaks').DiaryBreak) {
+  selectedLesson.value = null
+  selectedRequest.value = null
+  selectedBlock.value = item
+  panelMode.value = 'block'
+  panelOpen.value = true
+  panelDismissed.value = false
+  if (!isDesktop.value) mobileLessonOpen.value = true
+}
+
+async function onBlockChanged(message?: string) {
+  setFlash(message)
+  await load()
+  // Refresh selected block from latest diary payload
+  if (selectedBlock.value && diary.value?.blocks) {
+    const match = diary.value.blocks.find(b => String(b.id) === selectedBlock.value!.id)
+    if (match) {
+      selectedBlock.value = breaksForDates([match], [match.date])[0] || selectedBlock.value
+    }
+  }
+}
+
+async function onBlockRemoved() {
+  selectedBlock.value = null
+  setFlash('Block removed')
+  closePanel()
+  await load()
 }
 
 function localToday(): string {
@@ -942,12 +1137,18 @@ watch(view, () => {
 </script>
 
 <style scoped>
+.diary {
+  /* Fill the viewport below app chrome; calendar grows with it. */
+  min-height: max(calc(520px + 5rem), calc(100dvh - 5.5rem));
+}
+
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .toolbar__left,
@@ -1083,7 +1284,8 @@ watch(view, () => {
   left: auto;
   right: 0;
   z-index: 20;
-  min-width: 168px;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 24px));
   padding: 6px;
   border: 1px solid var(--color-border);
   border-radius: 12px;
@@ -1092,6 +1294,59 @@ watch(view, () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.type-filter__mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 6px 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.type-filter__mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.type-filter__mode-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--color-parchment);
+}
+
+.type-filter__mode-btn {
+  min-height: 30px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-bark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.type-filter__mode-btn--on {
+  background: var(--color-paper-white);
+  color: var(--color-ink-black);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-ink-black) 8%, transparent);
+}
+
+.type-filter__empty {
+  margin: 0;
+  padding: 8px 10px 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-muted);
 }
 
 .type-filter__option {
@@ -1132,8 +1387,51 @@ watch(view, () => {
     );
 }
 
+.type-filter__swatch[data-tone='all-areas'] {
+  background:
+    conic-gradient(
+      var(--color-diary-area-0) 0 90deg,
+      var(--color-diary-area-2) 90deg 180deg,
+      var(--color-diary-area-4) 180deg 270deg,
+      var(--color-diary-area-6) 270deg 360deg
+    );
+}
+
 .type-filter__swatch[data-tone='break'] {
   border-radius: 999px;
+}
+
+.type-filter__dot[data-area-slot='0'],
+.type-filter__swatch[data-area-slot='0'] {
+  background: var(--color-diary-area-0);
+}
+.type-filter__dot[data-area-slot='1'],
+.type-filter__swatch[data-area-slot='1'] {
+  background: var(--color-diary-area-1);
+}
+.type-filter__dot[data-area-slot='2'],
+.type-filter__swatch[data-area-slot='2'] {
+  background: var(--color-diary-area-2);
+}
+.type-filter__dot[data-area-slot='3'],
+.type-filter__swatch[data-area-slot='3'] {
+  background: var(--color-diary-area-3);
+}
+.type-filter__dot[data-area-slot='4'],
+.type-filter__swatch[data-area-slot='4'] {
+  background: var(--color-diary-area-4);
+}
+.type-filter__dot[data-area-slot='5'],
+.type-filter__swatch[data-area-slot='5'] {
+  background: var(--color-diary-area-5);
+}
+.type-filter__dot[data-area-slot='6'],
+.type-filter__swatch[data-area-slot='6'] {
+  background: var(--color-diary-area-6);
+}
+.type-filter__dot[data-area-slot='7'],
+.type-filter__swatch[data-area-slot='7'] {
+  background: var(--color-diary-area-7);
 }
 
 .slot-choice {
@@ -1219,12 +1517,12 @@ watch(view, () => {
 }
 
 .strip__day[data-on='yes'] .strip__dom:not(.strip__dom--today) {
-  background: #f2f2f7;
+  background: var(--surface-wash);
 }
 
 .strip__dow {
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--color-muted);
   text-transform: none;
   font-weight: 500;
 }
@@ -1254,6 +1552,8 @@ watch(view, () => {
   gap: 12px;
   min-width: 0;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .grid-wrap__main {
@@ -1262,20 +1562,30 @@ watch(view, () => {
   gap: 0;
   min-width: 0;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 520px;
 }
 
 @media (min-width: 900px) {
-  .grid-wrap__main--panel {
+  .grid-wrap__main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
+    grid-template-columns: minmax(0, 1fr) 0fr;
     gap: 0;
     align-items: stretch;
+    transition:
+      grid-template-columns var(--duration-panel) var(--ease-out),
+      border-color var(--duration-panel) var(--ease-out),
+      background-color var(--duration-panel) ease;
+  }
+
+  .grid-wrap__main--panel {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 34%);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-cards);
     overflow: hidden;
     background: var(--color-paper-white);
-    height: max(420px, calc(100dvh - 11.5rem));
-    min-height: 420px;
+    height: max(520px, calc(100dvh - 8rem));
+    min-height: 520px;
   }
 
   .grid-wrap__main--panel .grid-wrap__calendar {
@@ -1294,14 +1604,46 @@ watch(view, () => {
     border-radius: 0;
     border-right: 1px solid var(--color-border);
   }
+
+  .grid-wrap__side {
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-parchment);
+  }
+
+  .grid-wrap__side :deep(.panel) {
+    height: 100%;
+  }
+
+  .diary-side-enter-active,
+  .diary-side-leave-active {
+    transition:
+      opacity var(--duration-panel) var(--ease-out),
+      transform var(--duration-panel) var(--ease-out);
+  }
+
+  .diary-side-enter-from,
+  .diary-side-leave-to {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  .grid-wrap__calendar,
+  .grid-wrap__main > .month {
+    transition:
+      border-radius var(--duration-panel) var(--ease-out),
+      border-color var(--duration-panel) ease;
+  }
 }
 
 .grid-wrap__calendar {
   min-width: 0;
   width: 100%;
   flex: 1 1 auto;
-  height: max(420px, calc(100dvh - 11.5rem));
-  min-height: 420px;
+  height: max(520px, calc(100dvh - 11.5rem));
+  min-height: 520px;
   background: var(--color-paper-white);
   border-radius: var(--radius-cards);
   overflow: hidden;
@@ -1323,8 +1665,8 @@ watch(view, () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #ffffff;
-  border: 1px solid #ececec;
+  background: var(--surface-card);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 12px;
 }
@@ -1334,7 +1676,7 @@ watch(view, () => {
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   font-size: 11px;
-  color: #8e8e93;
+  color: var(--color-muted);
   text-align: center;
   text-transform: none;
   letter-spacing: 0;
@@ -1356,13 +1698,13 @@ watch(view, () => {
   padding: 8px;
   border: none;
   border-radius: 12px;
-  background: #fafafa;
+  background: var(--surface-wash);
   text-align: left;
   transition: background-color var(--duration-fast) ease;
 }
 
 .month__cell:hover {
-  background: #f2f2f7;
+  background: var(--surface-inset);
 }
 
 .month__cell[data-out='yes'] {
@@ -1403,8 +1745,8 @@ watch(view, () => {
   background: #b0b0b5;
 }
 
-.month__dot[data-status='completed'] {
-  background: #7a9a86;
+.month__dot[data-status='private'] {
+  background: var(--color-diary-break);
 }
 
 .month__dot[data-overlap='yes'] {
@@ -1431,6 +1773,26 @@ watch(view, () => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+
+.overview-sheet-enter-active,
+.overview-sheet-leave-active {
+  transition: opacity var(--duration-panel) var(--ease-out);
+}
+
+.overview-sheet-enter-active .overview-sheet__panel,
+.overview-sheet-leave-active .overview-sheet__panel {
+  transition: transform var(--duration-panel) var(--ease-out);
+}
+
+.overview-sheet-enter-from,
+.overview-sheet-leave-to {
+  opacity: 0;
+}
+
+.overview-sheet-enter-from .overview-sheet__panel,
+.overview-sheet-leave-to .overview-sheet__panel {
+  transform: translateY(16px);
 }
 
 .overview-sheet__backdrop {

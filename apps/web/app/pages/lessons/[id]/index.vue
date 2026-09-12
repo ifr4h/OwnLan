@@ -37,6 +37,18 @@
             <dt>Series</dt>
             <dd>Weekly recurring</dd>
           </div>
+          <div v-if="lesson.status === 'cancelled' && cancellationNoticeDisplay" class="facts__row">
+            <dt>Notice</dt>
+            <dd>{{ cancellationNoticeDisplay }}</dd>
+          </div>
+          <div v-if="lesson.status === 'cancelled' && lesson.cancelled_by" class="facts__row">
+            <dt>Cancelled by</dt>
+            <dd>{{ cancelledByLabel }}</dd>
+          </div>
+          <div v-if="lesson.status === 'cancelled' && lesson.cancellation_reason" class="facts__row">
+            <dt>Reason</dt>
+            <dd>{{ lesson.cancellation_reason }}</dd>
+          </div>
           <div v-if="contextSummary" class="facts__row">
             <dt>Last summary</dt>
             <dd>{{ contextSummary }}</dd>
@@ -461,7 +473,7 @@
           class="danger__btn"
           type="button"
           :disabled="!online"
-          @click="confirmCancel = true"
+          @click="confirmCancel = true; cancelNoticeHours = null"
         >
           Cancel lesson
         </button>
@@ -479,11 +491,29 @@
               <span>This and future lessons</span>
             </label>
           </fieldset>
+          <fieldset class="scope">
+            <legend class="scope__legend">Notice given</legend>
+            <div class="ol-seg" role="radiogroup" aria-label="Notice given">
+              <button
+                v-for="opt in noticeOptions"
+                :key="opt.hours"
+                type="button"
+                class="ol-chip"
+                :data-on="cancelNoticeHours === opt.hours ? 'yes' : 'no'"
+                :aria-pressed="cancelNoticeHours === opt.hours"
+                :disabled="cancelling"
+                @click="cancelNoticeHours = cancelNoticeHours === opt.hours ? null : opt.hours"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+            <p class="muted">Optional. How much notice the pupil gave.</p>
+          </fieldset>
           <div class="danger__actions">
             <button class="danger__btn" type="button" :disabled="cancelling" @click="onCancel">
               {{ cancelling ? 'Cancelling…' : 'Yes, cancel' }}
             </button>
-            <button class="ghost" type="button" :disabled="cancelling" @click="confirmCancel = false">
+            <button class="ghost" type="button" :disabled="cancelling" @click="closeCancelConfirm">
               Keep lesson
             </button>
           </div>
@@ -496,6 +526,7 @@
 <script setup lang="ts">
 import type { EmptySeatRecovery, GapMatch, Lesson } from '~/composables/useLessons'
 import type { CompletionAftermath, FinanceSnapshot, NoShowAftermath } from '~/composables/useFinance'
+import { CANCELLATION_NOTICE_OPTIONS, formatCancellationNoticeLabel } from '~/utils/cancellationNotice'
 
 type SkillCat = {
   code: string
@@ -538,6 +569,8 @@ const noShowCharge = ref<'outstanding' | 'package' | 'waived'>('outstanding')
 const noShowNotes = ref('')
 const markingNoShow = ref(false)
 const cancelScope = ref<'this' | 'this_and_future'>('this')
+const cancelNoticeHours = ref<number | null>(null)
+const noticeOptions = CANCELLATION_NOTICE_OPTIONS
 const cancelling = ref(false)
 const completing = ref(false)
 
@@ -567,6 +600,20 @@ const statusLabel = computed(() => {
   if (lesson.value.status === 'completed') return 'Completed'
   if (lesson.value.status === 'no_show') return 'No-show'
   return 'Scheduled'
+})
+
+const cancellationNoticeDisplay = computed(() => {
+  const l = lesson.value
+  if (!l || l.status !== 'cancelled') return null
+  return l.cancellation_notice_label || formatCancellationNoticeLabel(l.cancellation_notice_hours)
+})
+
+const cancelledByLabel = computed(() => {
+  const by = lesson.value?.cancelled_by
+  if (by === 'learner') return 'Pupil'
+  if (by === 'instructor') return 'You'
+  if (by === 'system') return 'System'
+  return by || null
 })
 
 const pupilFirstName = computed(() => {
@@ -804,9 +851,11 @@ async function onMarkNoShow() {
 async function onCancel() {
   cancelling.value = true
   try {
+    const notice = cancelNoticeHours.value
     const result = await cancelLesson(
       id.value,
       lesson.value?.series_id ? cancelScope.value : 'this',
+      notice != null ? { cancellation_notice_hours: notice } : {},
     )
     if ('items' in result) {
       lesson.value = result.items[0] ?? lesson.value
@@ -815,12 +864,17 @@ async function onCancel() {
       lesson.value = result
       emptySeat.value = result.empty_seat ?? null
     }
-    confirmCancel.value = false
+    closeCancelConfirm()
   } catch (e) {
     error.value = extractApiError(e, 'Could not cancel this lesson.')
   } finally {
     cancelling.value = false
   }
+}
+
+function closeCancelConfirm() {
+  confirmCancel.value = false
+  cancelNoticeHours.value = null
 }
 
 function bookEmptySeatHref(match: GapMatch): string {
@@ -1382,6 +1436,13 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-8);
+}
+
+.scope__legend {
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--color-bark);
+  margin-bottom: 2px;
 }
 
 .radio {

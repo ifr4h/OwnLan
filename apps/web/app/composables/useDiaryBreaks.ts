@@ -1,82 +1,94 @@
 import { formatDuration, parseHm } from '~/utils/calendar/timeGrid'
+import type { DiaryBlock } from '~/composables/useLessons'
 
+/** Grid-friendly shape for private diary blocks (lavender stripe). */
 export type DiaryBreak = {
   id: string
   date: string
   start_minutes: number
   end_minutes: number
   label: string
+  duration_minutes?: number
+  starts_at_local?: string
 }
 
-const STORAGE_PREFIX = 'ownlane.diary.breaks.'
-
-function storageKey(orgId: number | string | null | undefined): string {
-  return `${STORAGE_PREFIX}${orgId ?? 'local'}`
+export function diaryBlockToBreak(block: DiaryBlock): DiaryBreak {
+  const start = parseHm(block.starts_at_time || block.starts_at_local?.slice(11, 16) || '00:00')
+  const end = block.ends_at_time
+    ? parseHm(block.ends_at_time)
+    : start + (block.duration_minutes || 60)
+  return {
+    id: String(block.id),
+    date: block.date,
+    start_minutes: start,
+    end_minutes: end,
+    label: block.label || 'Private',
+    duration_minutes: block.duration_minutes,
+    starts_at_local: block.starts_at_local,
+  }
 }
 
 export function useDiaryBreaks() {
-  const { me } = useAuth()
-  const breaks = useState<DiaryBreak[]>('diary-breaks', () => [])
-
-  const orgId = computed(() => me.value?.organisation?.id ?? null)
-
-  function load() {
-    if (!import.meta.client) return
-    try {
-      const raw = localStorage.getItem(storageKey(orgId.value))
-      breaks.value = raw ? (JSON.parse(raw) as DiaryBreak[]) : []
-    } catch {
-      breaks.value = []
-    }
+  function breaksFromDiaryBlocks(blocks: DiaryBlock[] | undefined | null): DiaryBreak[] {
+    if (!blocks?.length) return []
+    return blocks.map(diaryBlockToBreak)
   }
 
-  function persist() {
-    if (!import.meta.client) return
-    localStorage.setItem(storageKey(orgId.value), JSON.stringify(breaks.value))
-  }
-
-  function breaksForDates(dates: string[]): DiaryBreak[] {
+  function breaksForDates(blocks: DiaryBlock[] | undefined | null, dates: string[]): DiaryBreak[] {
     const set = new Set(dates)
-    return breaks.value.filter(b => set.has(b.date))
+    return breaksFromDiaryBlocks(blocks).filter(b => set.has(b.date))
   }
 
-  function addBreak(input: {
-    date: string
+  async function createBlock(input: {
     starts_at_local: string
     duration_minutes: number
     label?: string
-  }): DiaryBreak {
-    const start = parseHm(input.starts_at_local.slice(11, 16) || input.starts_at_local)
-    const end = start + Math.max(15, input.duration_minutes)
-    const row: DiaryBreak = {
-      id: `brk_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      date: input.date,
-      start_minutes: start,
-      end_minutes: end,
-      label: (input.label || 'Break').trim() || 'Break',
-    }
-    breaks.value = [...breaks.value, row]
-    persist()
-    return row
+  }): Promise<DiaryBlock> {
+    const starts = input.starts_at_local.length === 16
+      ? `${input.starts_at_local}:00`
+      : input.starts_at_local
+    return await apiFetch<DiaryBlock>('/diary-blocks', {
+      method: 'POST',
+      body: {
+        starts_at_local: starts,
+        duration_minutes: Math.max(15, input.duration_minutes),
+        label: (input.label || 'Private').trim() || 'Private',
+      },
+    })
   }
 
-  function removeBreak(id: string) {
-    breaks.value = breaks.value.filter(b => b.id !== id)
-    persist()
+  async function updateBlock(
+    id: number | string,
+    payload: {
+      starts_at_local?: string
+      duration_minutes?: number
+      label?: string
+    },
+  ): Promise<DiaryBlock> {
+    const body: Record<string, unknown> = { ...payload }
+    if (typeof body.starts_at_local === 'string' && body.starts_at_local.length === 16) {
+      body.starts_at_local = `${body.starts_at_local}:00`
+    }
+    return await apiFetch<DiaryBlock>(`/diary-blocks/${id}`, {
+      method: 'PUT',
+      body,
+    })
+  }
+
+  async function deleteBlock(id: number | string): Promise<void> {
+    await apiFetch(`/diary-blocks/${id}`, { method: 'DELETE' })
   }
 
   function labelForBreak(b: DiaryBreak): string {
     return `${b.label} · ${formatDuration(b.end_minutes - b.start_minutes)}`
   }
 
-  watch(orgId, () => load(), { immediate: true })
-
   return {
-    breaks,
-    load,
+    breaksFromDiaryBlocks,
     breaksForDates,
-    addBreak,
-    removeBreak,
+    createBlock,
+    updateBlock,
+    deleteBlock,
     labelForBreak,
   }
 }

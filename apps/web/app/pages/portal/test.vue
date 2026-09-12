@@ -23,6 +23,18 @@
               <dt>{{ t('test.centre') }}</dt>
               <dd>{{ home.practical_test.test_centre }}</dd>
             </div>
+            <div v-if="home.practical_test.practical_test_time" class="test__row">
+              <dt>Time</dt>
+              <dd>{{ home.practical_test.practical_test_time }}</dd>
+            </div>
+            <div v-if="home.practical_test.booking_ref" class="test__row">
+              <dt>Booking ref</dt>
+              <dd>{{ home.practical_test.booking_ref }}</dd>
+            </div>
+            <div v-if="home.practical_test.cancel_by_label" class="test__row">
+              <dt>Cancel by</dt>
+              <dd>{{ home.practical_test.cancel_by_label }}</dd>
+            </div>
             <div class="test__row">
               <dt>Lessons</dt>
               <dd>
@@ -31,6 +43,22 @@
                     count: home.practical_test.lessons_booked_before_test,
                   })
                 }}
+                <template v-if="home.practical_test.hours_booked_label">
+                  · {{ home.practical_test.hours_booked_label }}
+                </template>
+              </dd>
+            </div>
+            <div v-if="home.practical_test.syllabus_line" class="test__row">
+              <dt>Syllabus</dt>
+              <dd>{{ home.practical_test.syllabus_line }}</dd>
+            </div>
+            <div v-if="home.practical_test.latest_mock" class="test__row">
+              <dt>Latest mock</dt>
+              <dd>
+                {{ home.practical_test.latest_mock.result_label }}
+                <template v-if="home.practical_test.latest_mock.date_display">
+                  · {{ home.practical_test.latest_mock.date_display }}
+                </template>
               </dd>
             </div>
           </dl>

@@ -24,12 +24,26 @@ const props = withDefaults(defineProps<{
     | 'test'
     | 'payment'
     | 'chevron-right'
+    | 'chevron-left'
     | 'chevron-down'
     | 'close'
     | 'logout'
     | 'lesson'
     | 'expense'
     | 'lightning'
+    | 'services'
+    | 'confetti'
+    | 'circle-check'
+    | 'pause'
+    | 'archive'
+    | 'columns'
+    | 'grip'
+    | 'list'
+    | 'grid'
+    | 'car'
+    | 'gearbox'
+    | 'flag'
+    | 'notes'
   size?: number
 }>(), {
   size: 20,
@@ -55,12 +69,26 @@ const paths: Record<string, string> = {
   test: 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
   payment: 'M19 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM3 11h18',
   'chevron-right': 'm9 18 6-6-6-6',
+  'chevron-left': 'm15 18-6-6 6-6',
   'chevron-down': 'm6 9 6 6 6-6',
   close: 'M18 6 6 18M6 6l12 12',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   lesson: 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z',
   expense: 'M12 2v20M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6',
   lightning: 'M13 2 3 14h8l-1 8 10-12h-8l1-8z',
+  services: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0',
+  confetti: 'M5.8 11.3 2 22l10.7-3.79M4 3h.01M22 8h.01M15 2h.01M22 20h.01M22 2l-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.01c-.86 0-1.6-.6-1.76-1.44L14 2M22 13l-1.14-2a3.3 3.3 0 0 0-2.66-1.72c-.62.02-1.06.5-1.06 1.12v.01c0 .66.4 1.25 1.02 1.5L22 13zM11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2z',
+  'circle-check': 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3',
+  pause: 'M8 5v14M16 5v14',
+  archive: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4',
+  columns: 'M4 4h6v16H4zM14 4h6v16h-6z',
+  grip: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  grid: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+  gearbox: 'M12 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 5.5v9.5M9 10h6M7 17h10v3H7z',
+  flag: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7',
+  notes: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h6M8 9h2',
+  car: 'M5 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5 13l1.5-4.5A2 2 0 0 1 8.4 7h7.2a2 2 0 0 1 1.9 1.5L19 13M3 13h18v3H3z',
 }
 </script>
 

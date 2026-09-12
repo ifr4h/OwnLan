@@ -580,7 +580,9 @@ defineExpose({ zoomBy, resetView, zoom, panX, panY })
   width: 100%;
   height: 100%;
   min-height: 320px;
-  background: var(--color-chalk-green);
+  /* Board surface stays cream so road diagrams stay readable. */
+  background: #fffefb;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   overflow: hidden;
   touch-action: none;
@@ -609,9 +611,9 @@ defineExpose({ zoomBy, resetView, zoom, panX, panY })
 .tcan__zbtn {
   width: 44px;
   height: 44px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-elevated);
   color: var(--color-ink-black);
   font-size: 20px;
   box-shadow: var(--shadow-soft);

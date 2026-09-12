@@ -24,6 +24,8 @@ export type ProfileEditor = {
     years_teaching: number | null
     vehicle_summary: string | null
     dual_controls: boolean
+    teaches_gender: string
+    teaches_gender_label?: string
     public_pricing: Array<{ duration_minutes: number; price_pence: number; label?: string | null }>
     services: Array<Record<string, unknown>>
     faqs: Array<{ question: string; answer: string }>
@@ -45,6 +47,7 @@ export type ProfileEditor = {
   acquisition_options: Array<{ value: string; label: string }>
   transmission_options: Array<{ value: string; label: string }>
   adi_status_options: Array<{ value: string; label: string }>
+  teaches_gender_options: Array<{ value: string; label: string }>
   teaching_style_options: Array<{ value: string; label: string }>
   service_type_options: Array<{ value: string; label: string }>
   source_link_tags: string[]

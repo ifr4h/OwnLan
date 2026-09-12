@@ -1,6 +1,6 @@
 <template>
   <section class="page">
-    <NuxtLink to="/pupils/intake" class="back">← Waiting for details</NuxtLink>
+    <NuxtLink to="/pupils?status=waiting" class="back">← Pupils</NuxtLink>
 
     <p v-if="loading" class="muted">Loading…</p>
     <p v-else-if="error" class="error" role="alert">{{ error }}</p>
@@ -89,8 +89,8 @@
         <h2 class="panel__title">About</h2>
         <dl class="facts">
           <div v-if="brief.goal" class="facts__row">
-            <dt>Goal</dt>
-            <dd>{{ goalLabel(brief.goal) }}</dd>
+            <dt>Looking for</dt>
+            <dd>{{ lookingForLabel(brief.goal) }}</dd>
           </div>
           <div v-if="brief.instructor_should_know" class="facts__row facts__row--block">
             <dt>First-lesson context</dt>
@@ -126,7 +126,7 @@
           :disabled="acting"
           @click="onWaitlist"
         >
-          {{ acting === 'waitlist' ? 'Adding…' : 'Add to waiting list' }}
+          {{ acting === 'waitlist' ? 'Adding…' : 'Add to waitlist' }}
         </button>
       </div>
 
@@ -179,14 +179,14 @@ function formatDate(ymd: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-function goalLabel(goal: string): string {
+function lookingForLabel(goal: string): string {
   const map: Record<string, string> = {
-    from_scratch: 'Starting from scratch',
-    gain_confidence: 'Building confidence',
-    pass_test: 'Preparing for a test',
-    returning: 'Returning after a break',
-    switching: 'Switching instructors',
-    particular_area: 'Improving a particular area',
+    from_scratch: 'Learn to drive from scratch',
+    gain_confidence: 'Help building confidence',
+    pass_test: 'Help preparing for a test',
+    returning: 'Get back into driving',
+    switching: 'A new instructor',
+    particular_area: 'Help with a particular skill',
     // legacy values from earlier drafts
     learn_to_drive: 'Learn to drive',
     pass_soon: 'Pass soon',
@@ -246,7 +246,7 @@ async function onWaitlist() {
     const result = await waitlistIntake(id.value)
     await navigateTo(`/pupils/${result.learner_id}`)
   } catch (e) {
-    actionError.value = extractApiError(e, 'Could not add to waiting list.')
+    actionError.value = extractApiError(e, 'Could not add to the waitlist.')
   } finally {
     acting.value = null
   }

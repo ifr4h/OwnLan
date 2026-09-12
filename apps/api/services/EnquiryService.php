@@ -526,6 +526,7 @@ class EnquiryService
             'about' => [
                 'instructor_should_know' => $enquiry->message,
             ],
+            'desired_start' => $enquiry->desired_start,
             'terms_acknowledged' => true,
         ];
     }

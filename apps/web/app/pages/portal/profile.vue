@@ -49,6 +49,14 @@
           {{ home.package_and_balance.credit_label }}
         </PortalContextCard>
 
+        <PortalContextCard
+          :title="t('profile.places')"
+          action-to="/portal/places"
+          :action-label="t('profile.openPlaces')"
+        >
+          {{ t('profile.placesHint') }}
+        </PortalContextCard>
+
         <button
           type="button"
           class="profile__signout"

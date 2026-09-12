@@ -310,10 +310,10 @@
 
           <div class="fields">
             <div>
-              <p class="field__label">What’s your goal?</p>
+              <p class="field__label">What are you looking for?</p>
               <div class="choices choices--wrap">
                 <button
-                  v-for="opt in goalOptions"
+                  v-for="opt in lookingForOptions"
                   :key="opt.value"
                   class="choice choice--chip"
                   type="button"
@@ -530,13 +530,13 @@ const slots = [
   { value: 'evening', label: 'Evening' },
 ]
 
-const goalOptions = [
-  { value: 'from_scratch', label: 'Starting from scratch' },
-  { value: 'gain_confidence', label: 'Building confidence' },
-  { value: 'pass_test', label: 'Preparing for a test' },
-  { value: 'returning', label: 'Returning after a break' },
-  { value: 'switching', label: 'Switching instructors' },
-  { value: 'particular_area', label: 'Improving a particular area' },
+const lookingForOptions = [
+  { value: 'from_scratch', label: 'Learn to drive from scratch' },
+  { value: 'gain_confidence', label: 'Help building confidence' },
+  { value: 'pass_test', label: 'Help preparing for a test' },
+  { value: 'returning', label: 'Get back into driving' },
+  { value: 'switching', label: 'A new instructor' },
+  { value: 'particular_area', label: 'Help with a particular skill' },
 ]
 
 const confidenceOptions = [

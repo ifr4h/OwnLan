@@ -11,8 +11,11 @@ use app\services\CompanionService;
 use app\services\BookingHoldService;
 use app\services\LearnerBookingAvailabilityService;
 use app\services\LearnService;
+use app\services\LearnerLocationService;
 use app\services\LessonBookingRequestService;
+use app\services\LessonMessageService;
 use app\services\LessonRouteService;
+use app\services\LessonService;
 use app\services\LearnerSelfAssessmentService;
 use app\services\MockTestService;
 use app\services\OnlinePaymentService;
@@ -45,6 +48,9 @@ class PortalController extends BaseApiController
     private LearnerBookingAvailabilityService $bookingAvailability;
     private OnlinePaymentService $onlinePayments;
     private BookingHoldService $bookingHolds;
+    private LearnerLocationService $locations;
+    private LessonMessageService $messages;
+    private LessonService $lessons;
 
     public function init(): void
     {
@@ -64,6 +70,9 @@ class PortalController extends BaseApiController
         $this->bookingAvailability = new LearnerBookingAvailabilityService();
         $this->onlinePayments = new OnlinePaymentService();
         $this->bookingHolds = new BookingHoldService();
+        $this->locations = new LearnerLocationService();
+        $this->messages = new LessonMessageService();
+        $this->lessons = new LessonService();
     }
 
     public function behaviors(): array
@@ -115,6 +124,15 @@ class PortalController extends BaseApiController
                     'booking-withdraw' => ['POST'],
                     'booking-accept-counter' => ['POST'],
                     'lesson-cancel' => ['POST'],
+                    'locations' => ['GET'],
+                    'location-create' => ['POST'],
+                    'location-update' => ['PUT', 'PATCH'],
+                    'location-delete' => ['DELETE', 'POST'],
+                    'location-default' => ['POST'],
+                    'lesson-messages' => ['GET'],
+                    'lesson-post-message' => ['POST'],
+                    'lesson-pickup' => ['PUT', 'PATCH', 'POST'],
+                    'lesson-focus-tags' => ['PUT', 'PATCH', 'POST'],
                 ],
             ],
         ];
@@ -411,5 +429,67 @@ class PortalController extends BaseApiController
     public function actionLessonCancel(int $id): array
     {
         return $this->booking->cancelLessonFromPortal($id, (array) Yii::$app->request->bodyParams);
+    }
+
+    public function actionLocations(): array
+    {
+        return ['items' => $this->locations->listForPortal()];
+    }
+
+    public function actionLocationCreate(): array
+    {
+        Yii::$app->response->statusCode = 201;
+
+        return $this->locations->createForPortal((array) Yii::$app->request->bodyParams);
+    }
+
+    public function actionLocationUpdate(int $id): array
+    {
+        return $this->locations->updateForPortal($id, (array) Yii::$app->request->bodyParams);
+    }
+
+    public function actionLocationDelete(int $id): array
+    {
+        return $this->locations->deleteForPortal($id);
+    }
+
+    public function actionLocationDefault(int $id): array
+    {
+        return $this->locations->setDefaultForPortal($id);
+    }
+
+    public function actionLessonMessages(int $id): array
+    {
+        return ['items' => $this->messages->listForLesson($id)];
+    }
+
+    public function actionLessonPostMessage(int $id): array
+    {
+        Yii::$app->response->statusCode = 201;
+        $body = (array) Yii::$app->request->bodyParams;
+
+        return $this->messages->postAsLearner($id, (string) ($body['body'] ?? ''));
+    }
+
+    public function actionLessonPickup(int $id): array
+    {
+        $account = PortalContext::requireAccount();
+
+        return $this->lessons->updatePickupAsLearner(
+            $id,
+            (int) $account->learner_id,
+            (array) Yii::$app->request->bodyParams,
+        );
+    }
+
+    public function actionLessonFocusTags(int $id): array
+    {
+        $account = PortalContext::requireAccount();
+
+        return $this->lessons->updateFocusTagsAsLearner(
+            $id,
+            (int) $account->learner_id,
+            (array) Yii::$app->request->bodyParams,
+        );
     }
 }

@@ -49,6 +49,7 @@ class PublicProfileService
             'acquisition_options' => $this->acquisitionOptions(),
             'transmission_options' => $this->transmissionOptions(),
             'adi_status_options' => $this->adiStatusOptions(),
+            'teaches_gender_options' => $this->teachesGenderOptions(),
             'source_link_tags' => ['instagram', 'facebook', 'website', 'tiktok'],
             'teaching_style_options' => $this->teachingStyleOptions(),
             'service_type_options' => $this->serviceTypeOptions(),
@@ -137,6 +138,12 @@ class PublicProfileService
         }
         if (array_key_exists('dual_controls', $data)) {
             $org->profile_dual_controls = (bool) $data['dual_controls'];
+        }
+        if (array_key_exists('teaches_gender', $data)) {
+            $pref = trim((string) ($data['teaches_gender'] ?? ''));
+            $org->profile_teaches_gender = in_array($pref, Organisation::teachesGenderValues(), true)
+                ? $pref
+                : Organisation::TEACHES_GENDER_ANY;
         }
         if (array_key_exists('allow_indexing', $data)) {
             $org->profile_allow_indexing = (bool) $data['allow_indexing'];
@@ -400,6 +407,8 @@ class PublicProfileService
             'years_teaching' => $org->profile_years_teaching,
             'vehicle_summary' => PublicContentSanitizer::singleLine($org->profile_vehicle_summary, 255),
             'dual_controls' => (bool) ($org->profile_dual_controls ?? false),
+            'teaches_gender' => $org->profile_teaches_gender ?: Organisation::TEACHES_GENDER_ANY,
+            'teaches_gender_label' => Organisation::teachesGenderLabel($org->profile_teaches_gender),
             'services' => $services,
             'pricing' => $pricing,
             'pricing_from_label' => $pricingFrom,
@@ -460,6 +469,8 @@ class PublicProfileService
             'years_teaching' => $org->profile_years_teaching,
             'vehicle_summary' => $org->profile_vehicle_summary,
             'dual_controls' => (bool) ($org->profile_dual_controls ?? false),
+            'teaches_gender' => $org->profile_teaches_gender ?: Organisation::TEACHES_GENDER_ANY,
+            'teaches_gender_label' => Organisation::teachesGenderLabel($org->profile_teaches_gender),
             'public_pricing' => $this->decodePricing($org),
             'services' => $editorServices,
             'faqs' => $faqs,
@@ -899,6 +910,18 @@ class PublicProfileService
             ['value' => 'adi', 'label' => 'ADI'],
             ['value' => 'pdi', 'label' => 'PDI'],
             ['value' => 'none', 'label' => 'Prefer not to say'],
+        ];
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function teachesGenderOptions(): array
+    {
+        return [
+            ['value' => Organisation::TEACHES_GENDER_ANY, 'label' => 'Everyone'],
+            ['value' => Organisation::TEACHES_GENDER_FEMALE, 'label' => 'Women only'],
+            ['value' => Organisation::TEACHES_GENDER_MALE, 'label' => 'Men only'],
         ];
     }
 }

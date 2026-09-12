@@ -100,7 +100,42 @@ class LessonDiaryServiceTest extends Unit
         $this->assertSame('week', $diary['view']);
         $this->assertSame('2026-09-14', $diary['range_start']);
         $this->assertSame('2026-09-20', $diary['range_end']);
+        $this->assertSame(1, $diary['week_starts_on']);
         $this->assertCount(7, $diary['days']);
+        $this->assertCount(2, $diary['lessons']);
+    }
+
+    public function testWeekViewSundayToSaturday(): void
+    {
+        $this->org->week_starts_on = 7;
+        $this->org->save(false, ['week_starts_on']);
+
+        $pupil = $this->learners->create([
+            'first_name' => 'Sun',
+            'last_name' => 'Week',
+            'mobile' => '07700903013',
+        ]);
+        // Wednesday 16 Sep 2026 → week Sun 13 – Sat 19.
+        $this->lessons->create([
+            'learner_id' => $pupil['id'],
+            'starts_at_local' => '2026-09-13 09:00',
+        ]);
+        $this->lessons->create([
+            'learner_id' => $pupil['id'],
+            'starts_at_local' => '2026-09-19 15:00',
+        ]);
+        $this->lessons->create([
+            'learner_id' => $pupil['id'],
+            'starts_at_local' => '2026-09-20 10:00', // next Sunday — out
+        ]);
+
+        $diary = $this->lessons->diary('week', '2026-09-16', $this->fixedNow('2026-09-16 12:00'));
+
+        $this->assertSame(7, $diary['week_starts_on']);
+        $this->assertSame('2026-09-13', $diary['range_start']);
+        $this->assertSame('2026-09-19', $diary['range_end']);
+        $this->assertSame('Sunday', $diary['days'][0]['weekday']);
+        $this->assertSame('Saturday', $diary['days'][6]['weekday']);
         $this->assertCount(2, $diary['lessons']);
     }
 

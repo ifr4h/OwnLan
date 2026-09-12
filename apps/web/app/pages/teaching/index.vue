@@ -138,7 +138,6 @@ onMounted(() => {
 <style scoped>
 .teach {
   gap: var(--spacing-28);
-  max-width: var(--content-wide-max);
 }
 
 .teach__hero {
@@ -147,10 +146,11 @@ onMounted(() => {
   padding: var(--spacing-28) var(--spacing-16);
   background: linear-gradient(
     160deg,
-    var(--color-frost-green) 0%,
-    var(--color-chalk-green) 55%,
-    #fff 100%
+    var(--surface-wash) 0%,
+    var(--surface-canvas) 55%,
+    var(--surface-card) 100%
   );
+  border: 1px solid var(--color-border);
 }
 
 @media (min-width: 900px) {
@@ -164,8 +164,9 @@ onMounted(() => {
 .teach__starts {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: var(--color-frost-green);
+  gap: 0;
+  background: var(--surface-card);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
   overflow: hidden;
 }
@@ -179,8 +180,8 @@ onMounted(() => {
   justify-content: center;
   text-decoration: none;
   color: inherit;
-  background: rgba(255, 255, 255, 0.55);
-  border-bottom: 1px solid rgba(226, 240, 231, 0.9);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--color-border);
   transition: background-color var(--duration-fast) ease;
 }
 
@@ -190,12 +191,14 @@ onMounted(() => {
 
 .teach__start:hover,
 .teach__start:focus-visible {
-  background: var(--color-paper-white);
+  background: var(--surface-wash);
 }
 
 .teach__start-title {
   font-size: var(--text-body);
   letter-spacing: var(--tracking-body-sm);
+  color: var(--color-ink-black);
+  font-weight: var(--font-weight-medium);
 }
 
 .teach__start-hint {
@@ -222,9 +225,10 @@ onMounted(() => {
 .teach__chip {
   min-height: 40px;
   padding: 6px 14px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-tags);
-  background: var(--color-frost-green);
+  background: var(--surface-wash);
+  color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-meta);
   cursor: pointer;
@@ -232,7 +236,8 @@ onMounted(() => {
 
 .teach__chip--on {
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  border-color: var(--color-ownlane-green);
+  color: var(--color-on-accent);
 }
 
 .teach__templates {

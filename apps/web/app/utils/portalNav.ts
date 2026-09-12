@@ -28,6 +28,7 @@ export const portalPrimaryNav: PortalNavItem[] = [
 
 export const portalSecondaryNav: PortalNavItem[] = [
   { to: '/portal/practice', labelKey: 'nav.practice', icon: 'practice', match: p => p.startsWith('/portal/practice') },
+  { to: '/portal/places', labelKey: 'nav.places', icon: 'profile', match: p => p.startsWith('/portal/places') },
   { to: '/portal/profile', labelKey: 'nav.profile', icon: 'profile', match: p => p.startsWith('/portal/profile') },
 ]
 
@@ -44,6 +45,7 @@ export const portalMobileMoreNav: PortalNavItem[] = [
   { to: '/portal/journey', labelKey: 'nav.journey', icon: 'journey' },
   { to: '/portal/practice', labelKey: 'nav.practice', icon: 'practice' },
   { to: '/portal/test', labelKey: 'nav.test', icon: 'test' },
+  { to: '/portal/places', labelKey: 'nav.places', icon: 'profile' },
   { to: '/portal/profile', labelKey: 'nav.profile', icon: 'profile' },
 ]
 

@@ -93,20 +93,36 @@
               <option v-for="opt in editor.transmission_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
           </label>
-          <div v-for="(row, i) in services" :key="i" class="service-row">
-            <input v-model="row.name" class="ol-input" placeholder="Name">
-            <select v-model="row.type" class="ol-select">
-              <option v-for="opt in editor.service_type_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-            <input v-model.number="row.duration_minutes" class="ol-input" type="number" min="0" step="15" placeholder="Minutes">
-            <input v-model="row.price" class="ol-input" inputmode="decimal" placeholder="£">
-            <button v-if="services.length > 1" class="ol-btn ol-btn--ghost ol-btn--sm" type="button" @click="services.splice(i, 1)">Remove</button>
+          <div class="services-summary">
+            <p class="ol-meta">
+              Prices on this page come from
+              <NuxtLink to="/services">Services</NuxtLink>.
+            </p>
+            <ul v-if="publicServiceSummary.length" class="services-summary__list">
+              <li v-for="row in publicServiceSummary" :key="row.id">
+                <span>{{ row.name }}</span>
+                <span>{{ row.meta }}</span>
+              </li>
+            </ul>
+            <p v-else class="ol-meta">No public lessons yet.</p>
+            <NuxtLink to="/services" class="ol-btn ol-btn--ghost ol-btn--sm">Manage in Services →</NuxtLink>
           </div>
-          <button class="ol-btn ol-btn--ghost ol-btn--sm" type="button" @click="addService">Add service</button>
         </section>
 
         <section class="ol-panel ol-stack">
           <h2 class="ol-section-title">About</h2>
+          <label class="ol-field">
+            <span class="ol-field__label">Who you teach</span>
+            <select v-model="teachesGender" class="ol-select">
+              <option
+                v-for="opt in (editor.teaches_gender_options ?? [])"
+                :key="opt.value"
+                :value="opt.value"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+          </label>
           <fieldset class="style-grid">
             <legend class="ol-field__label">Teaching style</legend>
             <label v-for="opt in editor.teaching_style_options" :key="opt.value" class="ol-check">
@@ -226,8 +242,9 @@ const allowWaitingList = ref(true)
 const allowIndexing = ref(true)
 const vehicleSummary = ref('')
 const dualControls = ref(false)
+const teachesGender = ref('any')
 const teachingStyles = ref<string[]>([])
-const services = ref<Array<{ id?: string; name: string; type: string; duration_minutes: number; price: string; description?: string }>>([])
+const publicServiceSummary = ref<Array<{ id: string; name: string; meta: string }>>([])
 const faqs = ref<Array<{ question: string; answer: string }>>([{ question: '', answer: '' }])
 const contactPhone = ref('')
 const contactEmail = ref('')
@@ -265,6 +282,7 @@ function applyEditor(data: ProfileEditor) {
   allowIndexing.value = data.profile.allow_indexing
   vehicleSummary.value = data.profile.vehicle_summary ?? ''
   dualControls.value = data.profile.dual_controls
+  teachesGender.value = data.profile.teaches_gender || 'any'
   teachingStyles.value = [...data.profile.teaching_styles]
   faqs.value = data.profile.faqs.length ? data.profile.faqs.map(f => ({ ...f })) : [{ question: '', answer: '' }]
   contactPhone.value = data.profile.contact_phone ?? ''
@@ -276,34 +294,34 @@ function applyEditor(data: ProfileEditor) {
   socialFacebook.value = data.profile.social_links.facebook ?? ''
 
   const rawServices = data.profile.services
-  services.value = rawServices.length
-    ? rawServices.map((row, i) => ({
+  if (rawServices.length) {
+    publicServiceSummary.value = rawServices.map((row, i) => {
+      const mins = Number(row.duration_minutes ?? 0)
+      const pence = Number(row.price_pence ?? 0)
+      const duration = mins % 60 === 0
+        ? (mins === 60 ? '1 hour' : `${mins / 60} hours`)
+        : `${mins} min`
+      const pounds = (pence / 100).toFixed(pence % 100 === 0 ? 0 : 2)
+      return {
         id: String(row.id ?? `service-${i + 1}`),
-        name: String(row.name ?? ''),
-        type: String(row.type ?? 'lesson'),
-        duration_minutes: Number(row.duration_minutes ?? 60),
-        price: String((Number(row.price_pence ?? 0) / 100) || ''),
-        description: row.description ? String(row.description) : undefined,
-      }))
-    : data.profile.public_pricing.map((row, i) => ({
-        id: `lesson-${row.duration_minutes}`,
-        name: row.label ?? `${row.duration_minutes} minutes`,
-        type: 'lesson',
-        duration_minutes: row.duration_minutes,
-        price: String(row.price_pence / 100),
-      }))
-}
-
-function poundsToPence(value: string): number {
-  const cleaned = value.replace(/[^0-9.]/g, '')
-  const parts = cleaned.split('.')
-  const pounds = parseInt(parts[0] || '0', 10)
-  const pencePart = (parts[1] ?? '00').padEnd(2, '0').slice(0, 2)
-  return pounds * 100 + parseInt(pencePart, 10)
-}
-
-function addService() {
-  services.value.push({ name: '', type: 'lesson', duration_minutes: 60, price: '' })
+        name: String(row.name ?? 'Lesson'),
+        meta: `${duration} · £${pounds}`,
+      }
+    })
+  } else {
+    publicServiceSummary.value = data.profile.public_pricing.map((row, i) => {
+      const mins = row.duration_minutes
+      const duration = mins % 60 === 0
+        ? (mins === 60 ? '1 hour' : `${mins / 60} hours`)
+        : `${mins} min`
+      const pounds = (row.price_pence / 100).toFixed(row.price_pence % 100 === 0 ? 0 : 2)
+      return {
+        id: `lesson-${mins}-${i}`,
+        name: row.label ?? 'Lesson',
+        meta: `${duration} · £${pounds}`,
+      }
+    })
+  }
 }
 
 function buildPayload() {
@@ -317,15 +335,7 @@ function buildPayload() {
     teaching_styles: teachingStyles.value,
     vehicle_summary: vehicleSummary.value,
     dual_controls: dualControls.value,
-    services: services.value.map((row, i) => ({
-      id: row.id ?? `service-${i + 1}`,
-      name: row.name,
-      type: row.type,
-      duration_minutes: row.duration_minutes,
-      price_pence: poundsToPence(row.price),
-      description: row.description ?? null,
-      public: true,
-    })),
+    teaches_gender: teachesGender.value || 'any',
     faqs: faqs.value.filter(f => f.question.trim() && f.answer.trim()),
     contact_phone: contactPhone.value || null,
     contact_email: contactEmail.value || null,
@@ -438,18 +448,38 @@ onMounted(() => void load())
   gap: 8px;
 }
 
-.service-row,
+.services-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.services-summary__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-cards);
+  overflow: hidden;
+  background: var(--color-paper-white);
+}
+
+.services-summary__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: var(--text-body-sm);
+}
+
+.services-summary__list li + li {
+  border-top: 1px solid var(--color-border);
+}
+
 .faq-row {
   display: grid;
   gap: 8px;
   margin-bottom: 12px;
-}
-
-@media (min-width: 720px) {
-  .service-row {
-    grid-template-columns: 1.4fr 1fr 0.7fr 0.7fr auto;
-    align-items: center;
-  }
 }
 
 .style-grid {

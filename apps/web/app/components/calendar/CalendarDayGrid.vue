@@ -2,6 +2,8 @@
 import type { DiaryDay, DiaryGap, DiaryLesson } from '~/composables/useLessons'
 import type { DiaryBreak } from '~/composables/useDiaryBreaks'
 import type { InstructorBookingRequest } from '~/components/calendar/DiaryLessonAppointment.vue'
+import type { DiaryColourMode } from '~/utils/calendar/diaryAreaColour'
+import { resolveDiaryArea } from '~/utils/calendar/diaryAreaColour'
 import {
   type GridBounds,
   blockHeight,
@@ -28,7 +30,9 @@ const props = defineProps<{
   workEndTime?: string
   workDays?: number[]
   breaks?: DiaryBreak[]
+  colourMode?: DiaryColourMode
   focusType?: 'all' | 'paid' | 'unpaid' | 'package' | 'break' | 'offer'
+  focusArea?: string
   selectLessons?: boolean
   bookingRequests?: InstructorBookingRequest[]
   slotPickActive?: boolean
@@ -38,7 +42,7 @@ const emit = defineEmits<{
   book: [payload: { date: string; starts_at_local: string; duration_minutes?: number }]
   openDay: [date: string]
   gapOpen: [gap: DiaryGap]
-  breakRemove: [id: string]
+  selectBreak: [breakItem: DiaryBreak]
   selectLesson: [lesson: DiaryLesson]
   selectRequest: [request: InstructorBookingRequest]
 }>()
@@ -280,7 +284,19 @@ function lessonFocusKind(lesson: DiaryLesson): 'paid' | 'unpaid' | 'package' | '
   return 'paid'
 }
 
+function isLessonDimmed(lesson: DiaryLesson): boolean {
+  if ((props.colourMode ?? 'payment') === 'area') {
+    const focus = props.focusArea ?? 'all'
+    if (focus === 'all') return false
+    return resolveDiaryArea(lesson.pickup_address).key !== focus
+  }
+  return isDimmed(lessonFocusKind(lesson))
+}
+
 function isDimmed(kind: 'paid' | 'unpaid' | 'package' | 'break' | 'offer' | 'other'): boolean {
+  if ((props.colourMode ?? 'payment') === 'area') {
+    return (props.focusArea ?? 'all') !== 'all'
+  }
   const focus = props.focusType ?? 'all'
   if (focus === 'all') return false
   return kind !== focus
@@ -457,10 +473,10 @@ watch(
               :class="{ 'tg__dimmed': isDimmed('break') }"
               type="button"
               :style="{ top: `${item.top}px`, height: `${Math.max(item.height, 22)}px` }"
-              :title="`${item.break.label}. Click to remove.`"
+              :title="item.break.label"
               :tabindex="isDimmed('break') ? -1 : undefined"
               @pointerdown.stop
-              @click="emit('breakRemove', item.break.id)"
+              @click="emit('selectBreak', item.break)"
             >
               <span class="tg__break-label">{{ item.break.label }}</span>
             </button>
@@ -469,7 +485,7 @@ watch(
               v-for="item in travelMarkers(day)"
               :key="item.key"
               class="tg__travel"
-              :class="{ 'tg__dimmed': (focusType ?? 'all') !== 'all' }"
+              :class="{ 'tg__dimmed': (colourMode === 'area' ? (focusArea ?? 'all') : (focusType ?? 'all')) !== 'all' }"
               :data-severity="item.warning.severity"
               :data-warning="item.warning.is_warning ? 'yes' : 'no'"
               :style="{ top: `${item.top}px`, height: `${Math.max(item.height, 10)}px` }"
@@ -486,7 +502,8 @@ watch(
               :lesson="block"
               :compact="compact || days.length > 1"
               :block-height="block.height"
-              :dimmed="isDimmed(lessonFocusKind(block))"
+              :dimmed="isLessonDimmed(block)"
+              :colour-mode="colourMode ?? 'payment'"
               :select-mode="selectLessons"
               :style-inline="{
                 top: `${block.top}px`,
@@ -682,7 +699,7 @@ watch(
 }
 
 .tg__day-head {
-  height: 52px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -730,7 +747,7 @@ watch(
 
 .tg__dom[data-today='yes'] {
   background: var(--color-ownlane-green);
-  color: #ffffff;
+  color: var(--color-on-accent);
   font-weight: 500;
 }
 
@@ -744,7 +761,7 @@ watch(
 .tg__off-day {
   position: absolute;
   inset: 0;
-  background: #f7f7f8;
+  background: color-mix(in srgb, var(--surface-inset) 55%, transparent);
   pointer-events: none;
   z-index: 0;
 }
@@ -753,7 +770,7 @@ watch(
   position: absolute;
   left: 0;
   right: 0;
-  background: #fafafa;
+  background: color-mix(in srgb, var(--surface-wash) 70%, transparent);
   pointer-events: none;
   z-index: 0;
 }
@@ -770,12 +787,12 @@ watch(
 }
 
 .tg__hline--hour {
-  border-top: 1px solid #e5e5ea;
+  border-top: 1px solid var(--color-border);
   z-index: 1;
 }
 
 .tg__hline--half {
-  border-top: 1px solid #f2f2f7;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
   z-index: 1;
 }
 

@@ -4,8 +4,14 @@ export type IntakeListItem = {
   id: number
   status: IntakeStatus | string
   display_name: string
+  area: string | null
+  transmission: string | null
+  experience_label: string | null
+  goal_label: string | null
+  availability_summary: string | null
   submitted_at: string | null
   created_at: string
+  invite_expires_at: string | null
   learner_id: number | null
   is_expired: boolean
   is_revoked: boolean
@@ -29,10 +35,14 @@ export type IntakeCreatePayload = {
 export type TheoryPayload = {
   status: string
   pass_date: string | null
+  test_date?: string | null
+  test_date_display?: string | null
+  days_until_test?: number | null
   expires_on: string | null
   expires_on_display: string | null
   days_until_expiry: number | null
   label: string
+  detail?: string | null
   urgency: 'none' | 'ok' | 'approaching' | 'soon' | 'expired' | string
 }
 
@@ -180,7 +190,7 @@ export function intakeStatusLabel(status: string, item?: Partial<IntakeListItem>
     case 'accepted':
       return 'Accepted'
     case 'waiting':
-      return 'On waiting list'
+      return 'On waitlist'
     case 'discarded':
       return 'Discarded'
     default:
@@ -239,11 +249,6 @@ export function useIntake() {
     })
   }
 
-  async function listWaitingPupils(): Promise<import('./usePupils').PupilListItem[]> {
-    const data = await apiFetch<{ items: import('./usePupils').PupilListItem[] }>('/learners/waiting')
-    return data.items
-  }
-
   return {
     createIntake,
     listIntakes,
@@ -254,6 +259,5 @@ export function useIntake() {
     peekIntake,
     fetchIntakeTerms,
     submitIntake,
-    listWaitingPupils,
   }
 }

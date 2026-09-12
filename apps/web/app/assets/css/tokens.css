@@ -3,11 +3,17 @@
    * OwnLane visual system — Zapier-inspired warm cream notebook,
    * with OwnLane Green as the single chromatic accent (not orange).
    * See docs/DESIGN.md
+   *
+   * Dark theme: [data-theme="dark"] below — warm ink notebook, not cool slate.
    */
+
+  color-scheme: light;
 
   /* Accent */
   --color-ownlane-green: #168B55;
   --color-jelly-green: #1a9d61; /* hover / brighter green */
+  /* Text on green / danger fills — stays cream in both themes */
+  --color-on-accent: #fffefb;
 
   /* Warm neutrals */
   --color-ink-black: #201515; /* Ink Brown — primary text */
@@ -44,8 +50,8 @@
    */
   --color-diary-paid: #c4f281;
   --color-diary-paid-ink: #243a12;
-  --color-diary-break: #c7c5ff;
-  --color-diary-break-ink: #2f2c55;
+  --color-diary-break: #c4c0f5;
+  --color-diary-break-ink: #2a2750;
   --color-diary-block: #b3d4ff;
   --color-diary-block-ink: #1a3a5c;
   --color-diary-unpaid: #ffaeb7;
@@ -53,6 +59,27 @@
   --color-diary-offer: #dcecff;
   --color-diary-offer-ink: #2f6fad;
   --color-diary-offer-cta: #ffaeb7;
+
+  /*
+   * Diary area slots — colour-by-area mode
+   * Distinct from payment lime / coral / block blue
+   */
+  --color-diary-area-0: #f5d0a9;
+  --color-diary-area-0-ink: #5c3a1a;
+  --color-diary-area-1: #c8e6d0;
+  --color-diary-area-1-ink: #1e4a32;
+  --color-diary-area-2: #dcc4f0;
+  --color-diary-area-2-ink: #3a2750;
+  --color-diary-area-3: #f5c4d0;
+  --color-diary-area-3-ink: #5c2438;
+  --color-diary-area-4: #c4e4f0;
+  --color-diary-area-4-ink: #1a455c;
+  --color-diary-area-5: #f0e4a8;
+  --color-diary-area-5-ink: #4a4412;
+  --color-diary-area-6: #e6d4c4;
+  --color-diary-area-6-ink: #4a3428;
+  --color-diary-area-7: #c4ece4;
+  --color-diary-area-7-ink: #1a4a42;
 
   /* Semantic */
   --color-danger: #c62828;
@@ -172,9 +199,89 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 120ms;
   --duration-med: 180ms;
+  --duration-panel: 280ms;
 
   --z-nav: 40;
   --z-sidebar: 30;
   --z-dropdown: 50;
   --z-toast: 60;
+}
+
+/*
+ * Dark theme — warm near-black canvas, cream text, same green accent.
+ * Applied via data-theme on <html> (see useTheme).
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-ink-black: #f3eee6;
+  --color-bark: #d8d2c8;
+  --color-coffee-stone: #c4bdb2;
+  --color-muted: #9a9388;
+  --color-ash-mist: #6f695f;
+  --color-driftwood: #5a534a;
+  --color-border: #3a342e;
+  --color-border-strong: #5a534a;
+
+  --color-paper-white: #1c1816;
+  --color-paper-soft: #1c1816;
+  --color-chalk-green: #14110f;
+  --color-frost-green: #231e1b;
+  --color-parchment: #231e1b;
+  --color-stone-linen: #2e2925;
+
+  --color-carbon: #f3eee6;
+  --color-near-black: #f3eee6;
+  --color-olive: #d8d2c8;
+  --color-soft-sage: #2a3d32;
+
+  --color-ownlane-green: #1a9d61;
+  --color-jelly-green: #22b06e;
+  --color-on-accent: #fffefb;
+
+  --color-danger: #ef5350;
+  --color-danger-wash: #3a1f1f;
+  --color-warning: #e6c35c;
+  --color-warning-wash: #4a3f1a;
+  --color-success: #1a9d61;
+  --color-success-wash: #1a2e24;
+  --color-info-wash: #231e1b;
+
+  --color-diary-paid: #3d5c28;
+  --color-diary-paid-ink: #d7f0b8;
+  --color-diary-break: #3a3870;
+  --color-diary-break-ink: #d4d1f5;
+  --color-diary-block: #2a4a6e;
+  --color-diary-block-ink: #c5ddf5;
+  --color-diary-unpaid: #6e3038;
+  --color-diary-unpaid-ink: #f5c4cb;
+  --color-diary-offer: #2a4a6e;
+  --color-diary-offer-ink: #c5ddf5;
+  --color-diary-offer-cta: #6e3038;
+
+  --color-diary-area-0: #6e4a2e;
+  --color-diary-area-0-ink: #f5dcc0;
+  --color-diary-area-1: #2a4a38;
+  --color-diary-area-1-ink: #c8e6d0;
+  --color-diary-area-2: #4a3868;
+  --color-diary-area-2-ink: #e0d0f5;
+  --color-diary-area-3: #6e3040;
+  --color-diary-area-3-ink: #f5c4d0;
+  --color-diary-area-4: #2a4a5c;
+  --color-diary-area-4-ink: #c4e4f0;
+  --color-diary-area-5: #5c5428;
+  --color-diary-area-5-ink: #f0e4a8;
+  --color-diary-area-6: #5c4538;
+  --color-diary-area-6-ink: #e6d4c4;
+  --color-diary-area-7: #2a4a44;
+  --color-diary-area-7-ink: #c4ece4;
+
+  --surface-canvas: #14110f;
+  --surface-card: #1c1816;
+  --surface-wash: #231e1b;
+  --surface-sidebar: #1a1614;
+  --surface-elevated: #24201c;
+  --surface-inset: #2e2925;
+
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.4);
 }

@@ -71,6 +71,8 @@ export type BookingSettings = {
   can_instant_book: boolean
   can_cancel: boolean
   cancellation_policy: string | null
+  cancellation_notice_hours?: number
+  cancellation_late_policy?: 'charge' | 'decide'
   booking_payment_policy?: string
   requires_payment_to_confirm?: boolean
 }
@@ -107,8 +109,11 @@ export function usePortalBooking() {
     return await apiFetch(`/portal/booking/requests/${id}/accept-counter`, { method: 'POST' })
   }
 
-  async function cancelLesson(id: number) {
-    return await apiFetch(`/portal/lessons/${id}/cancel`, { method: 'POST', body: {} })
+  async function cancelLesson(id: number, reason?: string) {
+    return await apiFetch(`/portal/lessons/${id}/cancel`, {
+      method: 'POST',
+      body: reason ? { reason } : {},
+    })
   }
 
   async function createBookingHold(payload: {

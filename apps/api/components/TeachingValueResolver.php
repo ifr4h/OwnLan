@@ -6,6 +6,7 @@ namespace app\components;
 
 use app\models\Lesson;
 use app\models\Organisation;
+use app\models\OrganisationService;
 use app\services\FinanceService;
 
 /**
@@ -26,6 +27,31 @@ final class TeachingValueResolver
         if ($lesson->price_pence !== null && (int) $lesson->price_pence > 0) {
             return (int) $lesson->price_pence;
         }
+
+        $service = null;
+        if ($lesson->service_id !== null) {
+            $service = OrganisationService::findOne([
+                'id' => (int) $lesson->service_id,
+                'organisation_id' => (int) $org->id,
+            ]);
+        }
+        try {
+            $local = OrganisationTime::utcToLocal((string) $lesson->starts_at, $org);
+            $pence = ServicePriceResolver::resolvePence(
+                $org,
+                $lesson,
+                $service,
+                (int) $lesson->learner_id,
+                $local,
+                (int) $lesson->duration_minutes,
+            );
+            if ($pence > 0) {
+                return $pence;
+            }
+        } catch (\Throwable) {
+            // fall through to hourly
+        }
+
         $rate = $org->default_hourly_rate_pence;
         if ($rate !== null && (int) $rate > 0) {
             return Money::lessonPriceFromHourlyRate((int) $rate, (int) $lesson->duration_minutes);

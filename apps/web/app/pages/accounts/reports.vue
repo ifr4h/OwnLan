@@ -50,6 +50,22 @@
         </ul>
       </section>
 
+      <section class="ol-panel ol-stack">
+        <h2 class="ol-section-title">Insights</h2>
+        <p class="ol-meta">
+          How many active pupils you have, plus new starters, passes and inactive in the dates you pick.
+        </p>
+        <NuxtLink to="/pupils/report" class="ol-btn ol-btn--sm">Open insights</NuxtLink>
+      </section>
+
+      <section class="ol-panel ol-stack">
+        <h2 class="ol-section-title">Test fault trends</h2>
+        <p class="ol-meta">
+          Rolling faults from practical tests you have logged — pass rate, averages, and category breakdown.
+        </p>
+        <NuxtLink to="/accounts/test-faults" class="ol-btn ol-btn--sm">Open test faults</NuxtLink>
+      </section>
+
       <section v-if="report.spending_by_category?.length" class="ol-panel ol-stack">
         <h2 class="ol-section-title">Expenses by category</h2>
         <ul class="ol-list-divide">

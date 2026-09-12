@@ -11,6 +11,14 @@ body {
   min-height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-haas-grot-text);
   font-weight: var(--font-weight-regular);

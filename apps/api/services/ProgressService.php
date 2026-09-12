@@ -6,6 +6,8 @@ namespace app\services;
 
 use app\components\PortalContext;
 use app\components\TenantContext;
+use app\models\Learner;
+use app\models\LearnerProgressNote;
 use app\models\LearnerSkillProgress;
 use app\models\Lesson;
 use app\models\LessonSkill;
@@ -250,6 +252,42 @@ class ProgressService
     }
 
     /**
+     * Share of the skill catalogue the learner has started (any rating).
+     * Coverage only — not a pass-readiness score.
+     *
+     * @return array{percent: int|null, line: string|null}
+     */
+    public function syllabusCoverage(int $learnerId, int $organisationId): array
+    {
+        $total = (int) ProgressSkill::find()
+            ->andWhere(['active' => true])
+            ->count();
+
+        if ($total <= 0) {
+            return ['percent' => null, 'line' => null];
+        }
+
+        $rated = (int) LearnerSkillProgress::find()
+            ->select('skill_id')
+            ->distinct()
+            ->andWhere([
+                'learner_id' => $learnerId,
+                'organisation_id' => $organisationId,
+            ])
+            ->count();
+
+        $percent = (int) round(($rated / $total) * 100);
+        if ($percent > 100) {
+            $percent = 100;
+        }
+
+        return [
+            'percent' => $percent,
+            'line' => $percent . '% through syllabus',
+        ];
+    }
+
+    /**
      * Portal progress overview — learner-safe skill summary with self-assessment.
      *
      * @return array<string, mixed>
@@ -274,7 +312,102 @@ class ProgressService
         }
         unset($cat);
 
+        $coverage = $this->syllabusCoverage($learnerId, $orgId);
+        $payload['syllabus_percent'] = $coverage['percent'];
+        $payload['syllabus_line'] = $coverage['line'];
+        $this->attachProgressNotes($payload, $learnerId, $orgId, true);
+
+        $learner = Learner::findOne([
+            'id' => $learnerId,
+            'organisation_id' => $orgId,
+        ]);
+        $payload['next_focus'] = $learner?->next_focus;
+
+        /** @var Lesson|null $latestCompleted */
+        $latestCompleted = Lesson::find()
+            ->andWhere([
+                'learner_id' => $learnerId,
+                'organisation_id' => $orgId,
+                'status' => Lesson::STATUS_COMPLETED,
+            ])
+            ->orderBy(['completed_at' => SORT_DESC, 'id' => SORT_DESC])
+            ->one();
+
+        $wentWell = $latestCompleted?->learner_summary;
+        if (is_string($wentWell)) {
+            $wentWell = trim($wentWell);
+            if ($wentWell === '') {
+                $wentWell = null;
+            }
+        } else {
+            $wentWell = null;
+        }
+
+        $payload['went_well'] = $wentWell;
+        $payload['went_well_lesson_id'] = $latestCompleted !== null ? (int) $latestCompleted->id : null;
+        $payload['learn_next'] = $this->suggestLearnNext($payload);
+
+        $journey = null;
+        if ($learner !== null) {
+            $org = \app\models\Organisation::findOne($orgId);
+            if ($org !== null) {
+                $journey = (new TestJourneyService())->build($learner, $org);
+            }
+        }
+        $payload['practical'] = null;
+        if (is_array($journey) && !empty($journey['countdown_label'])) {
+            $payload['practical'] = [
+                'countdown_label' => $journey['countdown_label'],
+                'days_until' => $journey['days_until'] ?? null,
+                'test_date_display' => $journey['test_date_display'] ?? null,
+            ];
+        }
+
         return $payload;
+    }
+
+    /**
+     * Pick a useful next skill for the learner to open — never a pass-readiness claim.
+     *
+     * @param array<string, mixed> $payload
+     * @return array{id: int, code: string, label: string, rating: string|null}|null
+     */
+    private function suggestLearnNext(array $payload): ?array
+    {
+        $focus = strtolower(trim((string) ($payload['next_focus'] ?? '')));
+        $candidates = [];
+
+        foreach ($payload['categories'] ?? [] as $cat) {
+            foreach ($cat['skills'] ?? [] as $skill) {
+                $rating = $skill['rating'] ?? null;
+                if ($rating === LearnerSkillProgress::RATING_CONFIDENT) {
+                    continue;
+                }
+                $rank = LearnerSkillProgress::RATING_RANK[$rating] ?? 0;
+                $label = (string) ($skill['label'] ?? '');
+                $boost = ($focus !== '' && $label !== '' && str_contains(strtolower($label), $focus))
+                    || ($focus !== '' && str_contains($focus, strtolower($label)))
+                    ? -10
+                    : 0;
+                $candidates[] = [
+                    'sort' => $boost + $rank,
+                    'skill' => [
+                        'id' => (int) $skill['id'],
+                        'code' => (string) $skill['code'],
+                        'label' => $label,
+                        'rating' => $rating,
+                    ],
+                ];
+            }
+        }
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, static fn (array $a, array $b) => $a['sort'] <=> $b['sort']);
+
+        return $candidates[0]['skill'];
     }
 
     /**
@@ -308,9 +441,171 @@ class ProgressService
         }
         unset($cat);
 
+        $coverage = $this->syllabusCoverage($learnerId, $orgId);
+        $payload['syllabus_percent'] = $coverage['percent'];
+        $payload['syllabus_line'] = $coverage['line'];
         $payload['mock_history'] = (new MockTestService())->listForLearner($learnerId);
+        $this->attachProgressNotes($payload, $learnerId, $orgId, false);
 
         return $payload;
+    }
+
+    /**
+     * Append an instructor skill rating outside a lesson (still historical evidence).
+     *
+     * @return array<string, mixed>
+     */
+    public function recordInstructorRating(int $learnerId, int $skillId, string $rating): array
+    {
+        $orgId = TenantContext::requireOrganisationId();
+
+        $learnerExists = Learner::find()
+            ->andWhere(['id' => $learnerId, 'organisation_id' => $orgId])
+            ->exists();
+        if (!$learnerExists) {
+            throw new NotFoundHttpException('Pupil not found.');
+        }
+
+        if (!in_array($rating, LearnerSkillProgress::RATINGS, true)) {
+            throw new BadRequestHttpException('Invalid rating.');
+        }
+
+        $this->findSkillOrFail($skillId);
+
+        $now = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        $progress = new LearnerSkillProgress();
+        $progress->organisation_id = $orgId;
+        $progress->learner_id = $learnerId;
+        $progress->skill_id = $skillId;
+        $progress->lesson_id = null;
+        $progress->rating = $rating;
+        $progress->recorded_at = $now;
+        $progress->created_at = $now;
+        if (!$progress->save()) {
+            throw new BadRequestHttpException('Could not save skill rating.');
+        }
+
+        return $this->instructorProgress($learnerId);
+    }
+
+    /**
+     * Upsert or clear an instructor note on a skill or category.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function upsertProgressNote(int $learnerId, array $data): array
+    {
+        $orgId = TenantContext::requireOrganisationId();
+        $learnerExists = Learner::find()
+            ->andWhere(['id' => $learnerId, 'organisation_id' => $orgId])
+            ->exists();
+        if (!$learnerExists) {
+            throw new NotFoundHttpException('Pupil not found.');
+        }
+
+        $skillId = isset($data['skill_id']) ? (int) $data['skill_id'] : 0;
+        $categoryCode = trim((string) ($data['category_code'] ?? ''));
+        $body = trim((string) ($data['body'] ?? ''));
+        $learnerVisible = !empty($data['learner_visible']);
+
+        if ($skillId > 0 && $categoryCode !== '') {
+            throw new BadRequestHttpException('Choose a skill or a category, not both.');
+        }
+        if ($skillId <= 0 && $categoryCode === '') {
+            throw new BadRequestHttpException('Choose a skill or a category.');
+        }
+
+        if ($skillId > 0) {
+            $this->findSkillOrFail($skillId);
+            $noteKey = LearnerProgressNote::skillKey($skillId);
+        } else {
+            $validCategory = ProgressSkill::find()
+                ->andWhere(['category_code' => $categoryCode, 'active' => true])
+                ->exists();
+            if (!$validCategory) {
+                throw new BadRequestHttpException('Unknown skill area.');
+            }
+            $noteKey = LearnerProgressNote::categoryKey($categoryCode);
+        }
+
+        $now = (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
+        /** @var LearnerProgressNote|null $row */
+        $row = LearnerProgressNote::find()
+            ->andWhere([
+                'organisation_id' => $orgId,
+                'learner_id' => $learnerId,
+                'note_key' => $noteKey,
+            ])
+            ->one();
+
+        if ($body === '') {
+            if ($row !== null) {
+                $row->delete();
+            }
+
+            return $this->instructorProgress($learnerId);
+        }
+
+        if ($row === null) {
+            $row = new LearnerProgressNote();
+            $row->organisation_id = $orgId;
+            $row->learner_id = $learnerId;
+            $row->note_key = $noteKey;
+            $row->created_at = $now;
+        }
+        $row->skill_id = $skillId > 0 ? $skillId : null;
+        $row->category_code = $categoryCode !== '' ? $categoryCode : null;
+        $row->body = $body;
+        $row->learner_visible = $learnerVisible;
+        $row->updated_at = $now;
+        if (!$row->save()) {
+            throw new BadRequestHttpException('Could not save note.');
+        }
+
+        return $this->instructorProgress($learnerId);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function attachProgressNotes(array &$payload, int $learnerId, int $orgId, bool $learnerFacingOnly): void
+    {
+        $query = LearnerProgressNote::find()
+            ->andWhere([
+                'organisation_id' => $orgId,
+                'learner_id' => $learnerId,
+            ]);
+        if ($learnerFacingOnly) {
+            $query->andWhere(['learner_visible' => true]);
+        }
+
+        /** @var LearnerProgressNote[] $rows */
+        $rows = $query->all();
+        $bySkill = [];
+        $byCategory = [];
+        foreach ($rows as $row) {
+            $note = [
+                'body' => (string) $row->body,
+                'learner_visible' => (bool) $row->learner_visible,
+                'updated_at' => (string) $row->updated_at,
+            ];
+            if ($row->skill_id !== null) {
+                $bySkill[(int) $row->skill_id] = $note;
+            } elseif ($row->category_code !== null && $row->category_code !== '') {
+                $byCategory[(string) $row->category_code] = $note;
+            }
+        }
+
+        foreach ($payload['categories'] as &$cat) {
+            $code = (string) ($cat['code'] ?? '');
+            $cat['note'] = $byCategory[$code] ?? null;
+            foreach ($cat['skills'] as &$skill) {
+                $skill['note'] = $bySkill[(int) $skill['id']] ?? null;
+            }
+            unset($skill);
+        }
+        unset($cat);
     }
 
     /**

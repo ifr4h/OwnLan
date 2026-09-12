@@ -21,9 +21,12 @@ export type BusinessSettings = {
   work_days: number[]
   work_start_time: string
   work_end_time: string
+  week_starts_on: number
   booking_mode: 'manual' | 'request' | 'instant'
   learner_reschedule_mode: 'manual' | 'request' | 'instant'
   learner_can_cancel: boolean
+  cancellation_notice_hours: number
+  cancellation_late_policy: 'charge' | 'decide'
   booking_minimum_notice_hours: number
   booking_advance_weeks: number
   booking_slot_increment_minutes: number
@@ -47,9 +50,12 @@ export type BusinessSettingsUpdate = {
   work_days?: number[]
   work_start_time?: string
   work_end_time?: string
+  week_starts_on?: number
   booking_mode?: 'manual' | 'request' | 'instant'
   learner_reschedule_mode?: 'manual' | 'request' | 'instant'
   learner_can_cancel?: boolean
+  cancellation_notice_hours?: number
+  cancellation_late_policy?: 'charge' | 'decide'
   booking_minimum_notice_hours?: number
   booking_advance_weeks?: number
 }

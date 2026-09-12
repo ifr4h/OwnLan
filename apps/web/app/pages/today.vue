@@ -123,7 +123,7 @@
         <p class="ol-empty__copy">
           Your teaching day is clear.
           <template v-if="(data.needs_you?.length ?? 0) > 0">
-            Check Needs you below if anything needs a decision.
+            Check For you today below if anything needs a decision.
           </template>
         </p>
         <div class="ol-empty__actions">
@@ -143,10 +143,16 @@
             <p class="ol-badge" :class="data.focus.is_current ? 'ol-badge--solid' : 'ol-badge--neutral'">
               {{ data.focus.is_current ? 'Now' : 'Next lesson' }}
             </p>
-            <p class="focus__clock ol-time">
-              {{ data.focus.starts_at_time }}
-              <span class="focus__clock-end">–{{ data.focus.ends_at_time }}</span>
-            </p>
+            <div class="focus__clock-wrap">
+              <LessonWeatherChip
+                v-if="data.focus && weatherFor(data.focus)"
+                :weather="weatherFor(data.focus)!"
+              />
+              <p class="focus__clock ol-time">
+                {{ data.focus.starts_at_time }}
+                <span class="focus__clock-end">–{{ data.focus.ends_at_time }}</span>
+              </p>
+            </div>
           </div>
 
           <h2 class="focus__name">{{ data.focus.learner_name }}</h2>
@@ -239,9 +245,65 @@
           </div>
         </article>
 
+        <div v-else-if="showDayWrap" class="day-end">
+          <DayDoneCard
+            :title="dayWrap?.celebration?.title || 'Teaching day done'"
+            :subtitle="dayWrapSubtitle"
+            :complete="true"
+            :actions="[{ label: 'View day’s wrap', path: '/day-wrap', primary: true }]"
+          />
+
+          <DayWrapStats
+            v-if="dayWrap?.stats?.length"
+            :stats="dayWrap.stats"
+            class="day-end__stats"
+          />
+
+          <section
+            v-if="dayWrapOpenLessons.length"
+            class="day-end__leftover"
+            aria-label="Still to finish"
+          >
+            <h2 class="ol-section-title">Still to finish</h2>
+            <div class="ol-panel ol-panel--flush">
+              <ul class="ol-list-divide">
+                <li v-for="lesson in dayWrapOpenLessons" :key="lesson.id">
+                  <div class="day-end__row">
+                    <div class="day-end__row-main">
+                      <p class="ol-row__title">
+                        <span class="ol-time">{{ lesson.starts_at_time }}</span>
+                        {{ lesson.learner_name || 'Pupil' }}
+                      </p>
+                      <p class="ol-meta">{{ lesson.detail_line || lesson.status_label }}</p>
+                    </div>
+                    <NuxtLink
+                      v-if="lesson.cta"
+                      :to="lesson.cta.path"
+                      class="ol-btn ol-btn--dark ol-btn--sm"
+                    >
+                      {{ lesson.cta.label }}
+                    </NuxtLink>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
         <div v-else class="ol-empty">
-          <h2 class="ol-empty__title">You’re done for today</h2>
-          <p class="ol-empty__copy">{{ data.summary?.line || 'Nothing left to teach.' }}</p>
+          <h2 class="ol-empty__title">
+            {{ incompleteLessonCount > 0 ? 'Lessons still to finish' : 'You’re done for today' }}
+          </h2>
+          <p class="ol-empty__copy">
+            <template v-if="incompleteLessonCount > 0">
+              {{ incompleteLessonCount === 1
+                ? '1 lesson still needs marking complete.'
+                : `${incompleteLessonCount} lessons still need marking complete.` }}
+            </template>
+            <template v-else>
+              {{ data.summary?.line || 'Nothing left to teach.' }}
+            </template>
+          </p>
         </div>
 
         <!-- TODAY schedule -->
@@ -252,72 +314,71 @@
           </div>
           <div class="ol-panel ol-panel--flush">
             <ul class="ol-list-divide">
-              <li v-for="lesson in scheduleRows" :key="lesson.id">
-                <NuxtLink :to="`/lessons/${lesson.id}`" class="ol-row">
-                  <span
-                    class="ol-row__time"
-                    :data-done="lesson.status === 'completed' ? 'yes' : 'no'"
-                    :data-active="lesson.id === data.focus?.id ? 'yes' : 'no'"
-                  >
-                    {{ lesson.starts_at_time }}
-                  </span>
-                  <div class="ol-row__main">
-                    <p class="ol-row__title">{{ lesson.learner_name }}</p>
-                    <p class="ol-row__meta">
-                      {{ durationLabel(lesson.duration_minutes) }}
-                      <template v-if="lesson.pickup_address">
-                        · {{ shortAddress(lesson.pickup_address) }}
-                      </template>
-                      <template v-if="lesson.status === 'completed'"> · Done</template>
-                      <template v-else-if="lesson.status === 'no_show'"> · No-show</template>
-                    </p>
-                  </div>
-                  <OlIcon name="chevron-right" :size="16" class="ol-row__chevron" />
-                </NuxtLink>
+              <li v-for="lesson in scheduleRows" :key="lesson.id" class="schedule__item">
+                <div class="schedule__row">
+                  <NuxtLink :to="`/lessons/${lesson.id}`" class="ol-row schedule__link">
+                    <span
+                      class="ol-row__time"
+                      :data-done="lesson.status === 'completed' ? 'yes' : 'no'"
+                      :data-active="lesson.id === data.focus?.id ? 'yes' : 'no'"
+                    >
+                      {{ lesson.starts_at_time }}
+                    </span>
+                    <div class="ol-row__main">
+                      <p class="ol-row__title">{{ lesson.learner_name }}</p>
+                      <p class="ol-row__meta">
+                        {{ durationLabel(lesson.duration_minutes) }}
+                        <template v-if="lesson.pickup_address">
+                          · {{ shortAddress(lesson.pickup_address) }}
+                        </template>
+                        <template v-if="lesson.status === 'completed'"> · Done</template>
+                        <template v-else-if="lesson.status === 'no_show'"> · No-show</template>
+                      </p>
+                    </div>
+                  </NuxtLink>
+                  <LessonWeatherChip
+                    v-if="weatherFor(lesson)"
+                    :weather="weatherFor(lesson)!"
+                    class="schedule__wx"
+                  />
+                  <NuxtLink :to="`/lessons/${lesson.id}`" class="schedule__chevron" tabindex="-1" aria-hidden="true">
+                    <OlIcon name="chevron-right" :size="16" />
+                  </NuxtLink>
+                </div>
               </li>
             </ul>
           </div>
         </section>
       </template>
 
-      <!-- NEEDS YOU -->
-      <section
+      <!-- FOR YOU TODAY -->
+      <TodayForYouPanel
         v-if="(data.needs_you?.length ?? 0) > 0"
-        class="needs"
-        aria-label="Needs you"
-      >
-        <h2 class="ol-section-title">Needs you</h2>
-        <p v-if="showNeedsYouIntro" class="needs__intro ol-meta">
-          Only when OwnLane already knows a decision is needed.
-          <button class="needs__gotit" type="button" @click="dismiss('needs_you_intro')">Got it</button>
-        </p>
-        <ul class="needs__list">
-          <li v-for="action in data.needs_you" :key="action.id" class="needs__item">
-            <div class="needs__main">
-              <p class="ol-badge ol-badge--warning">{{ kindLabel(action.kind) }}</p>
-              <p class="needs__title">{{ action.title }}</p>
-              <p class="ol-meta">{{ action.detail }}</p>
-            </div>
-            <NuxtLink :to="action.cta_path" class="ol-btn ol-btn--dark ol-btn--sm">
-              {{ action.cta_label }}
-            </NuxtLink>
-          </li>
-        </ul>
-      </section>
+        class="today__extras"
+        :actions="data.needs_you ?? []"
+        :show-intro="showNeedsYouIntro"
+        @dismiss-intro="dismiss('needs_you_intro')"
+      />
     </template>
   </section>
 </template>
 
 <script setup lang="ts">
 import type { CompletionAftermath } from '~/composables/useFinance'
-import type { NeedsYouAction, TodayResponse } from '~/composables/useToday'
+import type { TodayResponse } from '~/composables/useToday'
+import type { DayWrapLesson, DayWrapResponse } from '~/composables/useDayWrap'
+import DayDoneCard from '~/components/day-wrap/DayDoneCard.vue'
+import DayWrapStats from '~/components/day-wrap/DayWrapStats.vue'
+import LessonWeatherChip from '~/components/weather/LessonWeatherChip.vue'
 
 useHead({ title: 'Today · OwnLane' })
 
 const { mapsUrl, copyText } = useToday()
 const { durationLabel } = useLessons()
 const { loadToday, completeLessonLocalFirst, online } = useOfflineTeaching()
+const { fetchDayWrap } = useDayWrap()
 const { me } = useAuth()
+const { fillMissing: fillWeather, forLesson: weatherFor } = useLessonWeather()
 const {
   onboarding,
   stage,
@@ -330,6 +391,7 @@ const {
 const { updateSettings } = useSettings()
 
 const data = ref<TodayResponse | null>(null)
+const dayWrap = ref<DayWrapResponse | null>(null)
 const loading = ref(true)
 const error = ref('')
 const completingId = ref<number | null>(null)
@@ -372,6 +434,21 @@ const focusMobile = computed(() => {
   return mobile || null
 })
 
+const dayWrapOpenLessons = computed((): DayWrapLesson[] =>
+  (dayWrap.value?.lessons ?? []).filter(l => l.cta),
+)
+
+const showDayWrap = computed(() => !!dayWrap.value?.day_complete)
+
+const incompleteLessonCount = computed(() =>
+  (data.value?.lessons ?? []).filter(l => l.status === 'scheduled').length,
+)
+
+const dayWrapSubtitle = computed(() => {
+  if (dayWrap.value?.celebration?.subtitle) return dayWrap.value.celebration.subtitle
+  return data.value?.summary?.line || 'Nothing left to teach.'
+})
+
 const checklistTitle = computed(() => {
   if (stage.value === 'add_pupils') return 'Three quick steps'
   if (stage.value === 'book_lesson') return 'Next: book a lesson'
@@ -393,15 +470,6 @@ watch(onboarding, (value) => {
 function shortAddress(address: string): string {
   const part = address.split(',')[0]?.trim()
   return part && part.length <= 36 ? part : `${address.slice(0, 34)}…`
-}
-
-function kindLabel(kind: NeedsYouAction['kind']): string {
-  if (kind === 'empty_seat') return 'Empty seat'
-  if (kind === 'rebook') return 'Rebook'
-  if (kind === 'test_gap') return 'Test'
-  if (kind === 'intake_review') return 'New details'
-  if (kind === 'booking_request') return 'Lesson request'
-  return 'Action'
 }
 
 async function onSaveBusiness() {
@@ -427,6 +495,22 @@ async function load() {
   try {
     const [result] = await Promise.all([loadToday(), refresh()])
     data.value = result.data
+    if (result.data) {
+      void fillWeather({
+        date: result.data.date,
+        timezone: result.data.timezone,
+        lessons: result.data.lessons,
+      })
+    }
+    if (!result.data.focus && (result.data.lesson_count ?? 0) > 0) {
+      try {
+        dayWrap.value = await fetchDayWrap()
+      } catch {
+        dayWrap.value = null
+      }
+    } else {
+      dayWrap.value = null
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : extractApiError(e, 'Could not load today.')
   } finally {
@@ -484,6 +568,13 @@ onMounted(() => { void load() })
 </script>
 
 <style scoped>
+.today__extras {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
 .today__header {
   display: flex;
   flex-direction: column;
@@ -492,6 +583,37 @@ onMounted(() => { void load() })
 
 .today__summary {
   margin-top: 2px;
+}
+
+.day-end {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.day-end__stats {
+  margin-top: 0;
+}
+
+.day-end__leftover {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-end__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.day-end__row-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .aftermath {
@@ -550,9 +672,50 @@ onMounted(() => { void load() })
   gap: 12px;
 }
 
+.focus__clock-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .focus__clock {
   font-size: var(--text-heading-sm);
   line-height: 1;
+}
+
+.schedule__item {
+  position: relative;
+}
+
+.schedule__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.schedule__link {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule__wx {
+  flex-shrink: 0;
+}
+
+.schedule__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 36px;
+  margin-right: 8px;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.schedule .ol-panel--flush {
+  overflow: visible;
 }
 
 .focus__clock-end {
@@ -617,62 +780,5 @@ onMounted(() => { void load() })
 .ol-row__time[data-done='yes'] {
   color: var(--color-muted);
   text-decoration: line-through;
-}
-
-.needs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.needs__intro {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.needs__gotit {
-  border: none;
-  background: transparent;
-  color: var(--color-ownlane-green);
-  font-size: var(--text-meta);
-  padding: 0;
-  text-decoration: underline;
-}
-
-.needs__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.needs__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 16px;
-  background: var(--surface-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
-}
-
-.needs__main {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.needs__title {
-  font-size: var(--text-body-sm);
-}
-
-@media (max-width: 520px) {
-  .needs__item {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 </style>

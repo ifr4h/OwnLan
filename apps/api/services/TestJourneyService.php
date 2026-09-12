@@ -9,6 +9,7 @@ use app\models\Learner;
 use app\models\Lesson;
 use app\models\MockTest;
 use app\models\Organisation;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -55,24 +56,45 @@ class TestJourneyService
         $daysUntil = (int) $todayLocal->diff($testLocal)->format('%r%a');
         // %r%a: signed day count (negative if test is in the past)
 
-        $lessonsBefore = $this->countScheduledBeforeTest($learner, $testLocal, $tz);
+        $lessonStats = $this->scheduledBeforeTest($learner, $testLocal);
 
         $centre = trim((string) ($learner->test_centre ?? ''));
         $progress = trim((string) ($learner->last_lesson_summary ?? ''));
         $nextFocus = trim((string) ($learner->next_focus ?? ''));
+        $time = trim((string) ($learner->practical_test_time ?? ''));
+        $bookingRef = trim((string) ($learner->practical_test_booking_ref ?? ''));
+
+        $cancel = $this->cancelByPayload($learner, $testLocal, $tz);
+        $mocks = $this->recentMocks($learner);
+        $latestMock = $mocks[0] ?? null;
+        $syllabus = (new ProgressService())->syllabusCoverage(
+            (int) $learner->id,
+            (int) $learner->organisation_id,
+        );
 
         return [
             'test_date' => $raw,
             'test_date_display' => $testLocal->format('D j M Y'),
             'test_centre' => $centre !== '' ? $centre : null,
+            'practical_test_time' => $time !== '' ? $time : null,
+            'booking_ref' => $bookingRef !== '' ? $bookingRef : null,
             'days_until' => $daysUntil,
             'weeks_until' => $this->weeksLabel($daysUntil),
             'countdown_label' => $this->countdownLabel($daysUntil),
-            'lessons_booked_before_test' => $lessonsBefore,
+            'lessons_booked_before_test' => $lessonStats['count'],
+            'hours_booked_before_test' => $lessonStats['hours'],
+            'hours_booked_label' => $lessonStats['hours_label'],
+            'cancel_by_date' => $cancel['date'],
+            'cancel_by_label' => $cancel['label'],
+            'cancel_by_source' => $cancel['source'],
             'progress_summary' => $progress !== '' ? $progress : null,
             'next_focus' => $nextFocus !== '' ? $nextFocus : null,
             'show_on_today' => $this->showOnToday($daysUntil),
-            'recent_mocks' => $this->recentMocks($learner),
+            'reminder_offsets' => $learner->reminderOffsets(),
+            'latest_mock' => $latestMock,
+            'syllabus_percent' => $syllabus['percent'] ?? 0,
+            'syllabus_line' => $syllabus['line'] ?? null,
+            'recent_mocks' => $mocks,
         ];
     }
 
@@ -95,30 +117,98 @@ class TestJourneyService
             'countdown_label' => $full['countdown_label'],
             'days_until' => $full['days_until'],
             'test_centre' => $full['test_centre'],
+            'practical_test_time' => $full['practical_test_time'],
             'lessons_booked_before_test' => $full['lessons_booked_before_test'],
+            'hours_booked_label' => $full['hours_booked_label'],
+            'cancel_by_label' => $full['cancel_by_label'],
             'next_focus' => $full['next_focus'],
         ];
     }
 
-    private function countScheduledBeforeTest(
-        Learner $learner,
-        DateTimeImmutable $testLocal,
-        DateTimeZone $tz,
-    ): int {
-        // End of test day in org TZ → UTC exclusive upper bound for "before test day ends"
-        // Count lessons that start before the test calendar day begins (teaching before test day).
+    /**
+     * @return array{count: int, hours: float, hours_label: string|null}
+     */
+    private function scheduledBeforeTest(Learner $learner, DateTimeImmutable $testLocal): array
+    {
         $testDayStartUtc = $testLocal->setTime(0, 0, 0)
             ->setTimezone(new DateTimeZone('UTC'))
             ->format('Y-m-d H:i:s');
 
-        return (int) Lesson::find()
+        $query = Lesson::find()
             ->andWhere([
                 'organisation_id' => (int) $learner->organisation_id,
                 'learner_id' => (int) $learner->id,
                 'status' => Lesson::STATUS_SCHEDULED,
             ])
-            ->andWhere(['<', 'starts_at', $testDayStartUtc])
-            ->count();
+            ->andWhere(['<', 'starts_at', $testDayStartUtc]);
+
+        $count = (int) (clone $query)->count();
+        $minutes = (int) ((clone $query)->sum('duration_minutes') ?? 0);
+        $hours = round($minutes / 60, 1);
+        $hoursLabel = null;
+        if ($minutes > 0) {
+            $hoursLabel = $hours === (float) (int) $hours
+                ? ((int) $hours) . ' ' . ((int) $hours === 1 ? 'hour' : 'hours') . ' booked'
+                : $hours . ' hours booked';
+        }
+
+        return [
+            'count' => $count,
+            'hours' => $hours,
+            'hours_label' => $hoursLabel,
+        ];
+    }
+
+    /**
+     * @return array{date: string|null, label: string|null, source: string|null}
+     */
+    private function cancelByPayload(
+        Learner $learner,
+        DateTimeImmutable $testLocal,
+        DateTimeZone $tz,
+    ): array {
+        $entered = trim((string) ($learner->practical_test_cancel_by ?? ''));
+        if ($entered !== '') {
+            $dt = DateTimeImmutable::createFromFormat('Y-m-d', $entered, $tz);
+            if ($dt !== false && $dt->format('Y-m-d') === $entered) {
+                return [
+                    'date' => $entered,
+                    'label' => 'Cancel by ' . $dt->format('D j M'),
+                    'source' => 'entered',
+                ];
+            }
+        }
+
+        $guided = $this->threeClearWorkingDaysBefore($testLocal);
+        if ($guided === null) {
+            return ['date' => null, 'label' => null, 'source' => null];
+        }
+
+        return [
+            'date' => $guided->format('Y-m-d'),
+            'label' => 'Cancel by ' . $guided->format('D j M') . ' (DVSA guidance)',
+            'source' => 'guidance',
+        ];
+    }
+
+    /**
+     * Three clear working days before test (Mon–Fri only; bank holidays not modelled).
+     */
+    public function threeClearWorkingDaysBefore(DateTimeImmutable $testLocal): ?DateTimeImmutable
+    {
+        $cursor = $testLocal->setTime(0, 0, 0)->sub(new DateInterval('P1D'));
+        $clear = 0;
+        for ($i = 0; $i < 21; $i++) {
+            if ((int) $cursor->format('N') <= 5) {
+                $clear++;
+                if ($clear >= 3) {
+                    return $cursor;
+                }
+            }
+            $cursor = $cursor->sub(new DateInterval('P1D'));
+        }
+
+        return null;
     }
 
     private function countdownLabel(int $daysUntil): string

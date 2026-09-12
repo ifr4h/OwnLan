@@ -13,6 +13,7 @@ export type AuthOrganisation = {
   work_days?: number[]
   work_start_time?: string
   work_end_time?: string
+  week_starts_on?: number
 }
 
 export type AuthMembership = {
@@ -78,6 +79,9 @@ export function useAuth() {
     } finally {
       me.value = null
       ready.value = true
+      // Allow a fresh client session check after explicit logout + re-login.
+      const clientChecked = useState<boolean>('auth-client-checked', () => false)
+      clientChecked.value = false
     }
   }
 

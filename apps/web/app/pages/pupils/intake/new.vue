@@ -89,8 +89,7 @@
           {{ formatExpiry(invite.invite_expires_at) }}.
         </p>
         <div class="share__done">
-          <NuxtLink to="/pupils/intake" class="btn btn--ghost">View open links</NuxtLink>
-          <NuxtLink to="/pupils" class="text-link">Done · back to pupils</NuxtLink>
+          <NuxtLink to="/pupils" class="btn btn--ghost">Back to pupils</NuxtLink>
         </div>
       </div>
     </template>

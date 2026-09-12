@@ -79,13 +79,16 @@ async function onLogout() {
   display: flex;
   flex-direction: column;
   width: var(--sidebar-width);
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
   padding: var(--spacing-24) var(--spacing-16);
   background: var(--surface-sidebar);
   border-right: 1px solid var(--color-border);
   position: sticky;
   top: 0;
+  align-self: flex-start;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .sidebar__brand {
@@ -95,6 +98,7 @@ async function onLogout() {
   color: inherit;
   padding: var(--spacing-4) var(--spacing-8);
   margin-bottom: var(--spacing-28);
+  flex-shrink: 0;
 }
 
 .sidebar__nav {
@@ -102,6 +106,8 @@ async function onLogout() {
   flex-direction: column;
   gap: var(--spacing-4);
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar__secondary {
@@ -146,6 +152,7 @@ async function onLogout() {
 .sidebar__footer {
   padding-top: var(--spacing-16);
   margin-top: auto;
+  flex-shrink: 0;
 }
 
 .sidebar__signout {

@@ -66,9 +66,9 @@ const items: SceneObjectKind[] = [
   gap: 8px;
   min-height: 48px;
   padding: 8px 14px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  background: var(--color-frost-green);
+  background: var(--surface-wash);
   color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-meta);
@@ -77,7 +77,7 @@ const items: SceneObjectKind[] = [
 }
 
 .pal__item:active {
-  background: var(--color-soft-sage);
+  background: var(--surface-elevated);
 }
 
 .pal__glyph {
@@ -100,7 +100,7 @@ const items: SceneObjectKind[] = [
 
 @media (prefers-reduced-motion: reduce) {
   .pal__item:active {
-    background: var(--color-frost-green);
+    background: var(--surface-wash);
   }
 }
 </style>

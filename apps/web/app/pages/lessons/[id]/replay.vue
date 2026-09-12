@@ -200,7 +200,6 @@ function kindLabel(kind: string) {
 <style scoped>
 .replay {
   gap: var(--spacing-16);
-  max-width: var(--content-wide-max);
 }
 
 .replay__map-wrap {

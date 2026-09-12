@@ -59,8 +59,29 @@
         <p class="ol-field__hint">Times are in {{ timezoneLabel }}</p>
 
         <div class="ol-field">
-          <span class="ol-field__label">Duration</span>
-          <div class="ol-seg" role="group" aria-label="Lesson duration">
+          <span class="ol-field__label">{{ hasCatalogue ? 'Service' : 'Duration' }}</span>
+          <div v-if="hasCatalogue" class="ol-seg service-chips" role="group" aria-label="Service">
+            <button
+              v-for="service in catalogueServices"
+              :key="service.id"
+              class="ol-chip"
+              type="button"
+              :data-on="!durationIsCustom && serviceId === service.id ? 'yes' : 'no'"
+              @click="selectService(service.id)"
+            >
+              {{ service.name }}
+              <span class="chip-meta">{{ service.duration_label }} · {{ service.price_label }}</span>
+            </button>
+            <button
+              class="ol-chip"
+              type="button"
+              :data-on="durationIsCustom ? 'yes' : 'no'"
+              @click="selectDurationCustom"
+            >
+              Other length
+            </button>
+          </div>
+          <div v-else class="ol-seg" role="group" aria-label="Lesson duration">
             <button
               v-for="opt in durationPresets"
               :key="opt"
@@ -91,7 +112,24 @@
             required
             aria-label="Duration in minutes"
             placeholder="Minutes"
+            @input="serviceId = null; durationTouched = true"
           >
+        </div>
+
+        <div v-if="isTestDayService" class="test-details">
+          <p class="test-details__title">Test details</p>
+          <label class="ol-field">
+            <span class="ol-field__label">Booking reference</span>
+            <input v-model="bookingRef" class="ol-input" type="text">
+          </label>
+          <label class="ol-field">
+            <span class="ol-field__label">Last cancellation date</span>
+            <input v-model="cancelBy" class="ol-input" type="date">
+          </label>
+          <label class="ol-field">
+            <span class="ol-field__label">Test time</span>
+            <input v-model="testTimeDetail" class="ol-input" type="time">
+          </label>
         </div>
 
         <label class="ol-field">
@@ -215,6 +253,11 @@ const {
   checkTravel,
   durationLabel,
 } = useLessons()
+const {
+  services: catalogueServices,
+  defaultService,
+  ensureLoaded: ensureServicesLoaded,
+} = useBookableServices()
 
 const pupils = ref<PupilListItem[]>([])
 const pupilsLoading = ref(true)
@@ -223,9 +266,18 @@ const startsAtLocal = ref('')
 const defaultDuration = computed(
   () => me.value?.organisation?.default_lesson_duration_minutes || 60,
 )
+const serviceId = ref<number | null>(null)
 const durationMinutes = ref(String(60))
 const durationIsCustom = ref(false)
 const durationPresets = [60, 90, 120] as const
+const hasCatalogue = computed(() => catalogueServices.value.length > 0)
+const selectedService = computed(() =>
+  catalogueServices.value.find(s => s.id === serviceId.value) || null,
+)
+const isTestDayService = computed(() => selectedService.value?.kind === 'test_day')
+const bookingRef = ref('')
+const cancelBy = ref('')
+const testTimeDetail = ref('')
 const pickup = ref('')
 const pickupTouched = ref(false)
 const startsTouched = ref(false)
@@ -338,10 +390,24 @@ function syncDurationCustomFlag(mins: number) {
 function selectDurationPreset(mins: number) {
   durationIsCustom.value = false
   durationMinutes.value = String(mins)
+  durationTouched.value = true
+  if (hasCatalogue.value) {
+    const match = catalogueServices.value.find(s => s.duration_minutes === mins)
+    serviceId.value = match?.id ?? null
+  }
 }
 
 function selectDurationCustom() {
   durationIsCustom.value = true
+}
+
+function selectService(id: number) {
+  const service = catalogueServices.value.find(s => s.id === id)
+  if (!service) return
+  serviceId.value = service.id
+  durationMinutes.value = String(service.duration_minutes)
+  durationIsCustom.value = false
+  durationTouched.value = true
 }
 
 watch(repeatWeekly, () => {
@@ -483,6 +549,7 @@ function recurringPayload() {
     learner_id: learnerId.value as number,
     starts_at_local: startsAtLocal.value,
     duration_minutes: Number(durationMinutes.value),
+    service_id: serviceId.value,
     pickup_address: pickup.value.trim() || undefined,
     ...(endMode.value === 'count'
       ? { occurrence_count: Number(occurrenceCount.value) }
@@ -506,6 +573,7 @@ async function onPreview() {
 
 onMounted(async () => {
   try {
+    await ensureServicesLoaded()
     pupils.value = (await listPupils()).items
     if (!startsAtLocal.value) {
       startsAtLocal.value = defaultStartsFromQuery()
@@ -522,6 +590,12 @@ onMounted(async () => {
       durationMinutes.value = durationPreset
       syncDurationCustomFlag(Number(durationPreset))
       durationTouched.value = true
+      const match = catalogueServices.value.find(s => s.duration_minutes === Number(durationPreset))
+      serviceId.value = match?.id ?? null
+    } else if (defaultService.value) {
+      serviceId.value = defaultService.value.id
+      durationMinutes.value = String(defaultService.value.duration_minutes)
+      syncDurationCustomFlag(defaultService.value.duration_minutes)
     } else {
       durationMinutes.value = String(defaultDuration.value)
       syncDurationCustomFlag(defaultDuration.value)
@@ -564,7 +638,17 @@ async function onSubmit() {
       learner_id: learnerId.value,
       starts_at_local: startsAtLocal.value,
       duration_minutes: Number(durationMinutes.value),
+      service_id: serviceId.value,
       pickup_address: pickup.value.trim() || undefined,
+      ...(isTestDayService.value
+        ? {
+            test_details: {
+              practical_test_booking_ref: bookingRef.value.trim() || null,
+              practical_test_cancel_by: cancelBy.value || null,
+              practical_test_time: testTimeDetail.value || startsAtLocal.value.slice(11, 16) || null,
+            },
+          }
+        : {}),
     })
     await useOnboarding().refresh()
     await navigateTo(wasFirstLesson ? '/today' : `/lessons/${lesson.id}`)
@@ -583,6 +667,46 @@ async function onSubmit() {
   border-radius: var(--radius-small);
   background: var(--surface-wash);
   max-width: 48ch;
+}
+
+.test-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-12);
+  padding: var(--spacing-12);
+  border: 1px solid var(--color-frost-green);
+  border-radius: var(--radius-small);
+  background: var(--surface-wash);
+}
+
+.test-details__title {
+  font-family: var(--font-martian-mono);
+  font-size: var(--text-caption-mono);
+  letter-spacing: var(--tracking-caption-mono);
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin: 0;
+}
+
+.service-chips {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.service-chips .ol-chip {
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.chip-meta {
+  font-weight: 400;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.service-chips .ol-chip[data-on='yes'] .chip-meta {
+  color: color-mix(in srgb, var(--color-paper-white) 80%, transparent);
 }
 
 .datetime {

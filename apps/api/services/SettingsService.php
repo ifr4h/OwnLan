@@ -122,6 +122,10 @@ class SettingsService
             $org->work_end_time = $end;
         }
 
+        if (array_key_exists('week_starts_on', $data)) {
+            $org->week_starts_on = $this->normalizeWeekStartsOn($data['week_starts_on']);
+        }
+
         if (array_key_exists('booking_mode', $data)) {
             $mode = strtolower(trim((string) $data['booking_mode']));
             if (!in_array($mode, [
@@ -148,6 +152,25 @@ class SettingsService
 
         if (array_key_exists('learner_can_cancel', $data)) {
             $org->learner_can_cancel = (bool) $data['learner_can_cancel'];
+        }
+
+        if (array_key_exists('cancellation_notice_hours', $data)) {
+            $hours = (int) $data['cancellation_notice_hours'];
+            if ($hours < 0 || $hours > 168) {
+                throw new BadRequestHttpException('Cancellation notice must be between 0 and 168 hours.');
+            }
+            $org->cancellation_notice_hours = $hours;
+        }
+
+        if (array_key_exists('cancellation_late_policy', $data)) {
+            $policy = strtolower(trim((string) $data['cancellation_late_policy']));
+            if (!in_array($policy, [
+                Organisation::CANCELLATION_LATE_CHARGE,
+                Organisation::CANCELLATION_LATE_DECIDE,
+            ], true)) {
+                throw new BadRequestHttpException('Choose what happens when a pupil cancels with short notice.');
+            }
+            $org->cancellation_late_policy = $policy;
         }
 
         if (array_key_exists('booking_minimum_notice_hours', $data)) {
@@ -251,9 +274,12 @@ class SettingsService
             'work_days' => $org->workDays(),
             'work_start_time' => $org->workStartTime(),
             'work_end_time' => $org->workEndTime(),
+            'week_starts_on' => $org->weekStartsOn(),
             'booking_mode' => $org->bookingMode(),
             'learner_reschedule_mode' => $org->learnerRescheduleMode(),
             'learner_can_cancel' => $org->learnerCanCancel(),
+            'cancellation_notice_hours' => $org->cancellationNoticeHours(),
+            'cancellation_late_policy' => $org->cancellationLatePolicy(),
             'booking_minimum_notice_hours' => $org->bookingMinimumNoticeHours(),
             'booking_advance_weeks' => $org->bookingAdvanceWeeks(),
             'booking_slot_increment_minutes' => $org->bookingSlotIncrementMinutes(),
@@ -506,6 +532,16 @@ class SettingsService
         }
 
         return $days;
+    }
+
+    private function normalizeWeekStartsOn(mixed $raw): int
+    {
+        $n = (int) $raw;
+        if ($n < 1 || $n > 7) {
+            throw new BadRequestHttpException('Diary week must start on a day from Monday to Sunday.');
+        }
+
+        return $n;
     }
 
     private function normalizeClock(string $raw, string $label): string

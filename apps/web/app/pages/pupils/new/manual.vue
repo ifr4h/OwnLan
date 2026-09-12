@@ -24,6 +24,18 @@
           >
         </label>
         <label class="ol-field">
+          <span class="ol-field__label">
+            Middle name
+            <span class="ol-field__optional">optional</span>
+          </span>
+          <input
+            v-model="middleName"
+            class="ol-input"
+            type="text"
+            autocomplete="additional-name"
+          >
+        </label>
+        <label class="ol-field">
           <span class="ol-field__label">Last name</span>
           <input
             v-model="lastName"
@@ -61,6 +73,29 @@
         >
       </label>
 
+      <div class="form__row">
+        <label class="ol-field">
+          <span class="ol-field__label">
+            Gender
+            <span class="ol-field__optional">optional</span>
+          </span>
+          <select v-model="gender" class="ol-select">
+            <option value="">Not set</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="non_binary">Non-binary</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
+          </select>
+        </label>
+        <label class="ol-field">
+          <span class="ol-field__label">
+            Date of birth
+            <span class="ol-field__optional">optional</span>
+          </span>
+          <input v-model="dateOfBirth" class="ol-input" type="date">
+        </label>
+      </div>
+
       <label class="ol-field">
         <span class="ol-field__label">
           Usual pickup
@@ -90,9 +125,12 @@ useHead({ title: 'Add pupil · OwnLane' })
 
 const { createPupil } = usePupils()
 const firstName = ref('')
+const middleName = ref('')
 const lastName = ref('')
 const mobile = ref('')
 const email = ref('')
+const gender = ref('')
+const dateOfBirth = ref('')
 const pickup = ref('')
 const pending = ref(false)
 const error = ref('')
@@ -103,9 +141,12 @@ async function onSubmit() {
   try {
     const pupil = await createPupil({
       first_name: firstName.value.trim(),
+      middle_name: middleName.value.trim() || undefined,
       last_name: lastName.value.trim(),
       mobile: mobile.value.trim(),
       email: email.value.trim() || undefined,
+      gender: gender.value || undefined,
+      date_of_birth: dateOfBirth.value || undefined,
       default_pickup_address: pickup.value.trim() || undefined,
     })
     const { refresh } = useOnboarding()

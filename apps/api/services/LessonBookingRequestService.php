@@ -53,6 +53,8 @@ class LessonBookingRequestService
             'can_instant_book' => $mode === Organisation::BOOKING_MODE_INSTANT,
             'can_cancel' => $org->learnerCanCancel(),
             'cancellation_policy' => $org->cancellation_policy,
+            'cancellation_notice_hours' => $org->cancellationNoticeHours(),
+            'cancellation_late_policy' => $org->cancellationLatePolicy(),
             'booking_payment_policy' => $paymentPolicy,
             'requires_payment_to_confirm' => $requiresPayment,
             'learner_id' => (int) $learner->id,
@@ -383,7 +385,28 @@ class LessonBookingRequestService
             throw new NotFoundHttpException('Lesson not found.');
         }
 
-        return $this->cancelLessonDirect($lesson, $org, $data);
+        $policy = new CancellationPolicyService();
+        $preview = $policy->previewForLearner($lesson, $org);
+        $reason = trim((string) ($data['reason'] ?? ''));
+        if ($preview['reason_required'] && $reason === '') {
+            throw new BadRequestHttpException('Please say why you’re cancelling with short notice.');
+        }
+        if (mb_strlen($reason) > 500) {
+            throw new BadRequestHttpException('Keep the reason under 500 characters.');
+        }
+
+        $settle = $policy->settlePayloadForOutcome($preview['outcome']);
+        $payload = $settle ?? [];
+        $payload['cancelled_by'] = Lesson::CANCELLED_BY_LEARNER;
+        $payload['cancellation_notice_hours'] = $policy->noticeHoursFromEvaluation($preview);
+        if ($reason !== '') {
+            $payload['cancellation_reason'] = $reason;
+        }
+
+        $result = $this->cancelLessonDirect($lesson, $org, $payload);
+        $result['cancellation'] = $preview;
+
+        return $result;
     }
 
     public function expireStaleForOrganisation(int $organisationId): int
@@ -734,14 +757,39 @@ class LessonBookingRequestService
         $lesson->status = Lesson::STATUS_CANCELLED;
         $lesson->cancelled_at = $now;
         $lesson->updated_at = $now;
+        $cancelledBy = trim((string) ($data['cancelled_by'] ?? ''));
+        if (in_array($cancelledBy, [
+            Lesson::CANCELLED_BY_INSTRUCTOR,
+            Lesson::CANCELLED_BY_LEARNER,
+            Lesson::CANCELLED_BY_SYSTEM,
+        ], true)) {
+            $lesson->cancelled_by = $cancelledBy;
+        } elseif ($lesson->cancelled_by === null || $lesson->cancelled_by === '') {
+            $lesson->cancelled_by = Lesson::CANCELLED_BY_SYSTEM;
+        }
+        $reason = trim((string) ($data['cancellation_reason'] ?? ''));
+        if ($reason !== '') {
+            $lesson->cancellation_reason = mb_substr($reason, 0, 500);
+        }
+        $policy = new CancellationPolicyService();
+        $noticeHours = $policy->noticeHoursFromPayload($data);
+        if ($noticeHours !== null) {
+            $lesson->cancellation_notice_hours = $noticeHours;
+        }
 
         $finance = null;
         $tx = Yii::$app->db->beginTransaction();
         try {
-            if (!$lesson->save(true, ['status', 'cancelled_at', 'updated_at'])) {
+            $attrs = ['status', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'updated_at'];
+            if ($noticeHours !== null) {
+                $attrs[] = 'cancellation_notice_hours';
+            }
+            if (!$lesson->save(true, $attrs)) {
                 throw new BadRequestHttpException($this->firstError($lesson));
             }
-            $finance = (new FinanceService())->settleCancelledLesson($lesson, $org, $data);
+            if (array_key_exists('charge', $data)) {
+                $finance = (new FinanceService())->settleCancelledLesson($lesson, $org, $data);
+            }
             $tx->commit();
         } catch (\Throwable $e) {
             $tx->rollBack();
@@ -771,6 +819,7 @@ class LessonBookingRequestService
         $this->cancelLessonDirect($lesson, $org, [
             'source' => 'learner_reschedule',
             'charge' => 'waived',
+            'cancelled_by' => Lesson::CANCELLED_BY_SYSTEM,
         ]);
     }
 

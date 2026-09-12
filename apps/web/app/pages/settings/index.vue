@@ -19,6 +19,26 @@
       </NuxtLink>
     </nav>
 
+    <section class="ol-panel ol-stack">
+      <h2 class="ol-section-title">Appearance</h2>
+      <p class="ol-meta">Choose how OwnLane looks on this device. Applies straight away.</p>
+      <div class="ol-seg" role="radiogroup" aria-label="Theme">
+        <button
+          v-for="option in themeOptions"
+          :key="option.value"
+          class="ol-chip"
+          type="button"
+          :class="{ 'ol-chip--on': themePreference === option.value }"
+          :aria-checked="themePreference === option.value"
+          role="radio"
+          @click="setThemePreference(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+      <p class="ol-field__hint">{{ themeHint }}</p>
+    </section>
+
     <p v-if="loading" class="ol-muted">Loading…</p>
     <p v-else-if="loadError" class="ol-error" role="alert">{{ loadError }}</p>
 
@@ -71,7 +91,11 @@
             placeholder="35"
             required
           >
-          <span class="ol-field__hint">Used when completing a lesson if no package credit covers it.</span>
+          <span class="ol-field__hint">
+            Fallback when a lesson has no matching service price.
+            Prefer setting prices in
+            <NuxtLink to="/services">Services</NuxtLink>.
+          </span>
         </label>
       </section>
 
@@ -101,6 +125,15 @@
             <input v-model="workEnd" class="ol-input ol-input--time" type="time" required>
           </label>
         </div>
+        <label class="ol-field">
+          <span class="ol-field__label">Diary week starts on</span>
+          <select v-model.number="weekStartsOn" class="ol-select">
+            <option v-for="day in weekdayOptions" :key="day.value" :value="day.value">
+              {{ day.label }}
+            </option>
+          </select>
+          <span class="ol-field__hint">Changes the week and month layout in your diary.</span>
+        </label>
       </section>
 
       <section class="ol-panel ol-stack">
@@ -121,10 +154,32 @@
             v-model="cancellationPolicy"
             class="ol-textarea"
             rows="3"
-            placeholder="e.g. Please give 24 hours’ notice or the lesson may still be charged."
+            placeholder="e.g. Please give 48 hours’ notice or the lesson may still be charged."
           />
           <span class="ol-field__hint">Shown on the learner portal.</span>
         </label>
+        <label class="ol-check">
+          <input v-model="learnerCanCancel" type="checkbox">
+          Pupils can cancel lessons from the portal
+        </label>
+        <template v-if="learnerCanCancel">
+          <label class="ol-field">
+            <span class="ol-field__label">Notice for a free cancel (hours)</span>
+            <input v-model.number="cancellationNoticeHours" class="ol-input" type="number" min="0" max="168">
+            <span class="ol-field__hint">If they cancel with less notice, your late-cancel rule applies.</span>
+          </label>
+          <fieldset class="ol-stack">
+            <legend class="ol-field__label">If they cancel with short notice</legend>
+            <label class="ol-radio">
+              <input v-model="cancellationLatePolicy" type="radio" value="decide">
+              I’ll decide whether to charge
+            </label>
+            <label class="ol-radio">
+              <input v-model="cancellationLatePolicy" type="radio" value="charge">
+              Charge the lesson automatically
+            </label>
+          </fieldset>
+        </template>
       </section>
 
       <section class="ol-panel ol-stack">
@@ -160,10 +215,6 @@
             <option value="request">Pupils can request a new time</option>
             <option value="instant">Pupils can move to another available time</option>
           </select>
-        </label>
-        <label class="ol-check">
-          <input v-model="learnerCanCancel" type="checkbox">
-          Pupils can cancel lessons from the portal
         </label>
       </section>
 
@@ -273,6 +324,16 @@ const {
 } = useSettings()
 const { fetchMe } = useAuth()
 const { durationLabel } = useLessons()
+const {
+  preference: themePreference,
+  options: themeOptions,
+  setPreference: setThemePreference,
+} = useTheme()
+
+const themeHint = computed(() => {
+  const match = themeOptions.find(option => option.value === themePreference.value)
+  return match?.hint ?? ''
+})
 
 const loading = ref(true)
 const loadError = ref('')
@@ -290,11 +351,14 @@ const hourlyRate = ref('35')
 const workDays = ref<number[]>([1, 2, 3, 4, 5, 6])
 const workStart = ref('09:00')
 const workEnd = ref('18:00')
+const weekStartsOn = ref(1)
 const serviceArea = ref('')
 const cancellationPolicy = ref('')
 const bookingMode = ref('manual')
 const rescheduleMode = ref('manual')
 const learnerCanCancel = ref(true)
+const cancellationNoticeHours = ref(48)
+const cancellationLatePolicy = ref<'charge' | 'decide'>('decide')
 const bookingNoticeHours = ref(12)
 const bookingAdvanceWeeks = ref(4)
 const timezoneOptions = ref(['Europe/London', 'Europe/Dublin'])
@@ -327,13 +391,13 @@ const feedbackHref = computed(() => {
 })
 
 const weekdayOptions = [
-  { value: 1, short: 'Mon' },
-  { value: 2, short: 'Tue' },
-  { value: 3, short: 'Wed' },
-  { value: 4, short: 'Thu' },
-  { value: 5, short: 'Fri' },
-  { value: 6, short: 'Sat' },
-  { value: 7, short: 'Sun' },
+  { value: 1, short: 'Mon', label: 'Monday' },
+  { value: 2, short: 'Tue', label: 'Tuesday' },
+  { value: 3, short: 'Wed', label: 'Wednesday' },
+  { value: 4, short: 'Thu', label: 'Thursday' },
+  { value: 5, short: 'Fri', label: 'Friday' },
+  { value: 6, short: 'Sat', label: 'Saturday' },
+  { value: 7, short: 'Sun', label: 'Sunday' },
 ]
 
 function toggleWorkDay(day: number) {
@@ -365,11 +429,14 @@ async function load() {
     workDays.value = [...data.work_days]
     workStart.value = data.work_start_time
     workEnd.value = data.work_end_time
+    weekStartsOn.value = data.week_starts_on || 1
     serviceArea.value = data.service_area || ''
     cancellationPolicy.value = data.cancellation_policy || ''
     bookingMode.value = data.booking_mode || 'manual'
     rescheduleMode.value = data.learner_reschedule_mode || 'manual'
     learnerCanCancel.value = data.learner_can_cancel ?? true
+    cancellationNoticeHours.value = data.cancellation_notice_hours ?? 48
+    cancellationLatePolicy.value = data.cancellation_late_policy === 'charge' ? 'charge' : 'decide'
     bookingNoticeHours.value = data.booking_minimum_notice_hours ?? 12
     bookingAdvanceWeeks.value = data.booking_advance_weeks ?? 4
     timezoneOptions.value = data.timezone_options
@@ -405,11 +472,14 @@ async function onSave() {
       work_days: [...workDays.value].map(Number).sort((a, b) => a - b),
       work_start_time: workStart.value,
       work_end_time: workEnd.value,
+      week_starts_on: Number(weekStartsOn.value),
       service_area: serviceArea.value.trim() || null,
       cancellation_policy: cancellationPolicy.value.trim() || null,
       booking_mode: bookingMode.value,
       learner_reschedule_mode: rescheduleMode.value,
       learner_can_cancel: learnerCanCancel.value,
+      cancellation_notice_hours: Number(cancellationNoticeHours.value),
+      cancellation_late_policy: cancellationLatePolicy.value,
       booking_minimum_notice_hours: Number(bookingNoticeHours.value),
       booking_advance_weeks: Number(bookingAdvanceWeeks.value),
     })

@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace app\services;
 
 use app\components\OrganisationTime;
+use app\components\PortalContext;
 use app\components\TenantContext;
 use app\models\Instructor;
 use app\models\Learner;
+use app\models\LearnerLocation;
 use app\models\Lesson;
 use app\models\Organisation;
+use app\models\OrganisationService;
 use DateTimeImmutable;
 use DateTimeZone;
 use Yii;
@@ -62,26 +65,29 @@ class LessonService
         }
 
         $anchor = $this->resolveDiaryAnchor($dateLocal, $nowLocal, $tz);
+        $weekStartsOn = $org->weekStartsOn();
         if ($view === 'day') {
             $rangeStart = $anchor->setTime(0, 0, 0);
             $rangeEnd = $rangeStart->modify('+1 day');
             $label = $rangeStart->format('l j F Y');
         } elseif ($view === 'week') {
-            // ISO week: Monday start (UK teaching diary convention).
             $dow = (int) $anchor->format('N'); // 1=Mon … 7=Sun
-            $rangeStart = $anchor->modify('-' . ($dow - 1) . ' days')->setTime(0, 0, 0);
+            $offset = ($dow - $weekStartsOn + 7) % 7;
+            $rangeStart = $anchor->modify('-' . $offset . ' days')->setTime(0, 0, 0);
             $rangeEnd = $rangeStart->modify('+7 days');
             $weekEnd = $rangeEnd->modify('-1 day');
             $label = $rangeStart->format('j M') . ' – ' . $weekEnd->format('j M Y');
         } else {
-            // Month grid: Mon of week containing 1st → Sun of week containing last day.
+            // Month grid: week-start of week containing 1st → week-end of week containing last day.
             $monthStart = $anchor->modify('first day of this month')->setTime(0, 0, 0);
             $monthEndExclusive = $anchor->modify('first day of next month')->setTime(0, 0, 0);
             $dow = (int) $monthStart->format('N');
-            $rangeStart = $monthStart->modify('-' . ($dow - 1) . ' days');
+            $offset = ($dow - $weekStartsOn + 7) % 7;
+            $rangeStart = $monthStart->modify('-' . $offset . ' days');
             $lastDay = $monthEndExclusive->modify('-1 day');
             $dowLast = (int) $lastDay->format('N');
-            $rangeEnd = $lastDay->modify('+' . (7 - $dowLast) . ' days')->modify('+1 day')->setTime(0, 0, 0);
+            $endOffset = ($weekStartsOn + 6 - $dowLast + 7) % 7;
+            $rangeEnd = $lastDay->modify('+' . $endOffset . ' days')->modify('+1 day')->setTime(0, 0, 0);
             $label = $anchor->format('F Y');
         }
 
@@ -92,7 +98,7 @@ class LessonService
         $lessons = TenantContext::scopeByOrganisation(Lesson::find())
             ->andWhere(['>=', 'starts_at', $startUtc])
             ->andWhere(['<', 'starts_at', $endUtc])
-            ->with(['learner', 'instructor'])
+            ->with(['learner', 'instructor', 'pickupLocation'])
             ->orderBy(['starts_at' => SORT_ASC])
             ->all();
 
@@ -101,6 +107,7 @@ class LessonService
             $lessons,
         );
         $items = $this->markDiaryOverlaps($items);
+        $blocks = (new DiaryBlockService())->listInRange($startUtc, $endUtc);
         $travel = new TravelFeasibilityService();
         $gapMatcher = new GapMatchingService();
 
@@ -112,6 +119,10 @@ class LessonService
             $dayLessons = array_values(array_filter(
                 $items,
                 static fn (array $item) => str_starts_with((string) $item['starts_at_local'], $key),
+            ));
+            $dayBlocks = array_values(array_filter(
+                $blocks,
+                static fn (array $block) => ($block['date'] ?? '') === $key,
             ));
 
             if ($view === 'month') {
@@ -145,6 +156,17 @@ class LessonService
                         'overlaps' => !empty($lesson['overlaps']),
                     ];
                 }
+                foreach ($dayBlocks as $block) {
+                    $markers[] = [
+                        'id' => 'block-' . (int) $block['id'],
+                        'starts_at_time' => $block['starts_at_time'] ?? null,
+                        'duration_minutes' => (int) ($block['duration_minutes'] ?? 0),
+                        'learner_name' => $block['label'] ?? 'Private',
+                        'status' => 'private',
+                        'overlaps' => false,
+                        'is_private_block' => true,
+                    ];
+                }
                 $days[] = [
                     'date' => $key,
                     'date_display' => $cursor->format('j'),
@@ -158,6 +180,7 @@ class LessonService
                     'has_overlap' => $hasOverlap,
                     'markers' => $markers,
                     'lessons' => [],
+                    'blocks' => [],
                     'gaps' => [],
                 ];
             } else {
@@ -170,6 +193,7 @@ class LessonService
                     'is_today' => $key === $nowLocal->format('Y-m-d'),
                     'lesson_count' => count($dayLessons),
                     'lessons' => $dayLessons,
+                    'blocks' => $dayBlocks,
                     'gaps' => $gaps,
                 ];
             }
@@ -206,8 +230,10 @@ class LessonService
             'work_start_time' => $org->work_start_time ?: Organisation::DEFAULT_WORK_START,
             'work_end_time' => $org->work_end_time ?: Organisation::DEFAULT_WORK_END,
             'work_days' => $org->workDays(),
+            'week_starts_on' => $weekStartsOn,
             'days' => $days,
             'lessons' => $view === 'month' ? [] : $flat,
+            'blocks' => $view === 'month' ? [] : $blocks,
             'overlap_count' => count(array_filter(
                 $view === 'month' ? $items : $flat,
                 static fn (array $i) => !empty($i['overlaps']),
@@ -371,11 +397,14 @@ class LessonService
         $lesson->instructor_id = (int) $instructor->id;
         $lesson->learner_id = (int) $learner->id;
         $lesson->status = Lesson::STATUS_SCHEDULED;
-        $lesson->duration_minutes = $this->resolveDuration($data['duration_minutes'] ?? null);
+        $resolved = $this->resolveServiceAndDuration($org, $data);
+        $lesson->service_id = $resolved['service_id'];
+        $lesson->duration_minutes = $resolved['duration_minutes'];
         $lesson->starts_at = OrganisationTime::formatUtc(
             OrganisationTime::localToUtc((string) ($data['starts_at_local'] ?? ''), $org),
         );
-        $lesson->pickup_address = $this->resolvePickup($data['pickup_address'] ?? null, $learner);
+        $this->applyPickupFields($lesson, $learner, $data, Lesson::PICKUP_BY_INSTRUCTOR);
+        $this->applyFocusTags($lesson, $data['focus_tags'] ?? null);
 
         $now = gmdate('Y-m-d H:i:s');
         $lesson->created_at = $now;
@@ -383,6 +412,10 @@ class LessonService
 
         if (!$lesson->save()) {
             throw new BadRequestHttpException($this->firstError($lesson));
+        }
+
+        if (!empty($data['test_details']) && is_array($data['test_details'])) {
+            $this->applyTestDetailsFromBooking($learner, $data['test_details'], $lesson);
         }
 
         $lesson->populateRelation('learner', $learner);
@@ -394,6 +427,50 @@ class LessonService
             $lesson,
             $learner->fullName,
         );
+    }
+
+    /**
+     * When booking a Test day lesson, update the pupil's DVSA test details.
+     *
+     * @param array<string, mixed> $details
+     */
+    private function applyTestDetailsFromBooking(Learner $learner, array $details, Lesson $lesson): void
+    {
+        $dirty = false;
+        if (array_key_exists('practical_test_booking_ref', $details)) {
+            $ref = trim((string) $details['practical_test_booking_ref']);
+            $learner->practical_test_booking_ref = $ref === '' ? null : mb_substr($ref, 0, 64);
+            $dirty = true;
+        }
+        if (array_key_exists('practical_test_cancel_by', $details)) {
+            $cancel = trim((string) ($details['practical_test_cancel_by'] ?? ''));
+            if ($cancel === '') {
+                $learner->practical_test_cancel_by = null;
+            } else {
+                $dt = \DateTimeImmutable::createFromFormat('Y-m-d', $cancel);
+                if ($dt !== false && $dt->format('Y-m-d') === $cancel) {
+                    $learner->practical_test_cancel_by = $cancel;
+                }
+            }
+            $dirty = true;
+        }
+        if (array_key_exists('practical_test_time', $details)) {
+            $time = trim((string) ($details['practical_test_time'] ?? ''));
+            $learner->practical_test_time = preg_match('/^\d{2}:\d{2}$/', $time) === 1 ? $time : null;
+            $dirty = true;
+        }
+        if (trim((string) ($learner->test_date ?? '')) === '') {
+            $org = Organisation::findOne(['id' => (int) $lesson->organisation_id]);
+            if ($org !== null) {
+                $local = OrganisationTime::utcToLocal($lesson->starts_at, $org);
+                $learner->test_date = $local->format('Y-m-d');
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            $learner->updated_at = gmdate('Y-m-d H:i:s');
+            $learner->save(false);
+        }
     }
 
     /**
@@ -484,12 +561,21 @@ class LessonService
             );
         }
 
-        if (array_key_exists('duration_minutes', $data)) {
-            $lesson->duration_minutes = $this->resolveDuration($data['duration_minutes']);
+        if (array_key_exists('service_id', $data) || array_key_exists('duration_minutes', $data)) {
+            $resolved = $this->resolveServiceAndDuration($org, array_merge([
+                'service_id' => $lesson->service_id,
+                'duration_minutes' => $lesson->duration_minutes,
+            ], $data));
+            $lesson->service_id = $resolved['service_id'];
+            $lesson->duration_minutes = $resolved['duration_minutes'];
         }
 
-        if (array_key_exists('pickup_address', $data)) {
-            $lesson->pickup_address = $this->resolvePickup($data['pickup_address'], $learner, allowEmpty: true);
+        if (array_key_exists('pickup_address', $data) || array_key_exists('pickup_location_id', $data)) {
+            $this->applyPickupFields($lesson, $learner, $data, Lesson::PICKUP_BY_INSTRUCTOR);
+        }
+
+        if (array_key_exists('focus_tags', $data)) {
+            $this->applyFocusTags($lesson, $data['focus_tags']);
         }
 
         if (array_key_exists('instructor_notes', $data)) {
@@ -512,6 +598,113 @@ class LessonService
             $lesson,
             $learner->fullName,
         );
+    }
+
+    /**
+     * Instructor clears the pickup-changed alert on the diary panel.
+     *
+     * @return array<string, mixed>
+     */
+    public function acknowledgePickupChange(int $id): array
+    {
+        $org = $this->requireOrganisation();
+        $lesson = $this->findOwned($id);
+        $lesson->pickup_change_acked_at = gmdate('Y-m-d H:i:s');
+        $lesson->updated_at = $lesson->pickup_change_acked_at;
+        if (!$lesson->save(false, ['pickup_change_acked_at', 'updated_at'])) {
+            throw new BadRequestHttpException('Could not acknowledge pickup change.');
+        }
+
+        return $this->toApiArray($lesson, $org);
+    }
+
+    /**
+     * Pupil updates pickup on their own lesson (sets change alert for instructor).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function updatePickupAsLearner(int $id, int $learnerId, array $data): array
+    {
+        $lesson = PortalContext::scopeOwnLearner(Lesson::find())
+            ->andWhere(['id' => $id])
+            ->one();
+        if (!$lesson instanceof Lesson || (int) $lesson->learner_id !== $learnerId) {
+            throw new NotFoundHttpException('Lesson not found.');
+        }
+        if (!$lesson->isScheduled()) {
+            throw new BadRequestHttpException('Only upcoming lessons can change pickup.');
+        }
+
+        $learner = Learner::findOne(['id' => $learnerId]);
+        if (!$learner instanceof Learner) {
+            throw new NotFoundHttpException('Pupil not found.');
+        }
+
+        $org = Organisation::findOne(['id' => (int) $lesson->organisation_id]);
+        if ($org === null) {
+            throw new NotFoundHttpException('Organisation not found.');
+        }
+
+        $before = (string) ($lesson->pickup_address ?? '');
+        $this->applyPickupFields($lesson, $learner, $data, Lesson::PICKUP_BY_LEARNER, forceChangeFlag: true);
+        $after = (string) ($lesson->pickup_address ?? '');
+        if ($before !== $after) {
+            $lesson->pickup_changed_at = gmdate('Y-m-d H:i:s');
+            $lesson->pickup_change_acked_at = null;
+            (new LearnerProfileChangeService())->record(
+                $learner,
+                'portal_lesson_pickup',
+                'Changed lesson pickup',
+                [['field' => 'pickup', 'from' => $before !== '' ? $before : null, 'to' => $after !== '' ? $after : null]],
+            );
+        }
+        $lesson->updated_at = gmdate('Y-m-d H:i:s');
+        if (!$lesson->save()) {
+            throw new BadRequestHttpException($this->firstError($lesson));
+        }
+
+        return [
+            'id' => (int) $lesson->id,
+            'pickup_address' => $lesson->pickup_address,
+            'pickup_location_id' => $lesson->pickup_location_id !== null ? (int) $lesson->pickup_location_id : null,
+            'pickup_changed' => $lesson->pickupChangePending(),
+        ];
+    }
+
+    /**
+     * Pupil suggests this-lesson focus tags (merged with any existing).
+     *
+     * @param list<mixed>|array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public function updateFocusTagsAsLearner(int $id, int $learnerId, array $data): array
+    {
+        $lesson = PortalContext::scopeOwnLearner(Lesson::find())
+            ->andWhere(['id' => $id])
+            ->one();
+        if (!$lesson instanceof Lesson || (int) $lesson->learner_id !== $learnerId) {
+            throw new NotFoundHttpException('Lesson not found.');
+        }
+        if (!$lesson->isScheduled()) {
+            throw new BadRequestHttpException('Only upcoming lessons can suggest focus.');
+        }
+
+        $incoming = $data['focus_tags'] ?? $data;
+        if (!is_array($incoming)) {
+            throw new BadRequestHttpException('focus_tags must be a list.');
+        }
+        $merged = array_merge($lesson->focusTags(), $incoming);
+        $this->applyFocusTags($lesson, $merged);
+        $lesson->updated_at = gmdate('Y-m-d H:i:s');
+        if (!$lesson->save(true, ['focus_tags_json', 'updated_at'])) {
+            throw new BadRequestHttpException($this->firstError($lesson));
+        }
+
+        return [
+            'id' => (int) $lesson->id,
+            'focus_tags' => $lesson->focusTags(),
+        ];
     }
 
     /**
@@ -541,11 +734,27 @@ class LessonService
         $lesson->status = Lesson::STATUS_CANCELLED;
         $lesson->cancelled_at = $now;
         $lesson->updated_at = $now;
+        $lesson->cancelled_by = Lesson::CANCELLED_BY_INSTRUCTOR;
+        $reason = trim((string) ($data['cancellation_reason'] ?? $data['reason'] ?? ''));
+        if ($reason !== '') {
+            $lesson->cancellation_reason = mb_substr($reason, 0, 500);
+        }
+        $policy = new CancellationPolicyService();
+        $noticeHours = $policy->noticeHoursFromPayload($data);
+        if ($noticeHours !== null) {
+            $lesson->cancellation_notice_hours = $noticeHours;
+            // Recording pupil notice means they cancelled (instructor is logging it).
+            $lesson->cancelled_by = Lesson::CANCELLED_BY_LEARNER;
+        }
 
         $finance = null;
         $tx = Yii::$app->db->beginTransaction();
         try {
-            if (!$lesson->save(true, ['status', 'cancelled_at', 'updated_at'])) {
+            $attrs = ['status', 'cancelled_at', 'cancelled_by', 'cancellation_reason', 'updated_at'];
+            if ($noticeHours !== null) {
+                $attrs[] = 'cancellation_notice_hours';
+            }
+            if (!$lesson->save(true, $attrs)) {
                 throw new BadRequestHttpException($this->firstError($lesson));
             }
 
@@ -564,6 +773,45 @@ class LessonService
         if ($finance !== null) {
             $payload['finance'] = $finance;
         }
+        $payload['empty_seat'] = (new EmptySeatService())->forCancelledLesson($lesson, $org);
+
+        return $payload;
+    }
+
+    /**
+     * Apply or waive charge on an already-cancelled lesson (e.g. pupil late cancel).
+     *
+     * @param array<string, mixed> $data charge: waived|outstanding|package
+     * @return array<string, mixed>
+     */
+    public function settleCancellation(int $id, array $data = []): array
+    {
+        $org = $this->requireOrganisation();
+        $lesson = $this->findOwned($id);
+
+        if ($lesson->status !== Lesson::STATUS_CANCELLED) {
+            throw new BadRequestHttpException('Only cancelled lessons can be settled this way.');
+        }
+        if ($lesson->settlement !== null && $lesson->settlement !== '') {
+            throw new BadRequestHttpException('This cancellation has already been settled.');
+        }
+
+        $charge = strtolower(trim((string) ($data['charge'] ?? '')));
+        if (!in_array($charge, ['waived', 'outstanding', 'package'], true)) {
+            throw new BadRequestHttpException('Choose whether to charge or waive this cancellation.');
+        }
+
+        $finance = (new FinanceService())->settleCancelledLesson($lesson, $org, ['charge' => $charge]);
+        if ($finance === null) {
+            throw new BadRequestHttpException('Could not settle this cancellation.');
+        }
+
+        $lesson->refresh();
+        $lesson->populateRelation('learner', $lesson->learner);
+        $lesson->populateRelation('instructor', $lesson->instructor);
+
+        $payload = $this->toApiArray($lesson, $org);
+        $payload['finance'] = $finance;
         $payload['empty_seat'] = (new EmptySeatService())->forCancelledLesson($lesson, $org);
 
         return $payload;
@@ -812,6 +1060,15 @@ class LessonService
         );
         $serialized = $this->markNextLesson($serialized, $nowUtc);
         $serialized = (new TravelFeasibilityService())->annotateDiaryItems($serialized);
+        try {
+            $serialized = (new WeatherService())->annotateLessons(
+                $serialized,
+                $dayStartLocal->format('Y-m-d'),
+                (string) $org->timezone,
+            );
+        } catch (\Throwable $e) {
+            Yii::error('Today weather annotate failed: ' . $e->getMessage(), __METHOD__);
+        }
 
         $focus = null;
         foreach ($serialized as $item) {
@@ -941,6 +1198,54 @@ class LessonService
     }
 
     /**
+     * Resolve catalogue service + duration for create/update.
+     *
+     * @param array<string, mixed> $data
+     * @return array{service_id: int|null, duration_minutes: int}
+     */
+    public function resolveServiceAndDuration(Organisation $org, array $data): array
+    {
+        $service = null;
+        if (array_key_exists('service_id', $data) && $data['service_id'] !== null && $data['service_id'] !== '') {
+            $service = OrganisationService::findOne([
+                'id' => (int) $data['service_id'],
+                'organisation_id' => (int) $org->id,
+            ]);
+            if ($service === null) {
+                throw new BadRequestHttpException('That service was not found.');
+            }
+            if ($service->status === OrganisationService::STATUS_INACTIVE) {
+                throw new BadRequestHttpException('That service is inactive.');
+            }
+        }
+
+        if ($service !== null && !array_key_exists('duration_minutes', $data)) {
+            $duration = $this->resolveDuration($service->duration_minutes);
+        } elseif (array_key_exists('duration_minutes', $data)) {
+            $duration = $this->resolveDuration($data['duration_minutes']);
+        } elseif ($service !== null) {
+            $duration = $this->resolveDuration($service->duration_minutes);
+        } else {
+            // Prefer default active catalogue service when nothing specified.
+            $service = OrganisationService::find()
+                ->andWhere([
+                    'organisation_id' => (int) $org->id,
+                    'status' => OrganisationService::STATUS_ACTIVE,
+                    'is_default' => true,
+                ])
+                ->one();
+            $duration = $service !== null
+                ? $this->resolveDuration($service->duration_minutes)
+                : $this->resolveDuration(null);
+        }
+
+        return [
+            'service_id' => $service !== null ? (int) $service->id : null,
+            'duration_minutes' => $duration,
+        ];
+    }
+
+    /**
      * @throws BadRequestHttpException
      */
     private function resolveDuration(mixed $value): int
@@ -967,6 +1272,132 @@ class LessonService
         }
 
         return $text;
+    }
+
+    /**
+     * Apply saved place and/or freeform pickup onto a lesson.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function applyPickupFields(
+        Lesson $lesson,
+        Learner $learner,
+        array $data,
+        string $setBy,
+        bool $forceChangeFlag = false,
+    ): void {
+        $hasLocationId = array_key_exists('pickup_location_id', $data);
+        $hasAddress = array_key_exists('pickup_address', $data);
+        $locationIdRaw = $hasLocationId ? $data['pickup_location_id'] : null;
+
+        if ($hasLocationId && $locationIdRaw !== null && $locationIdRaw !== '') {
+            $locationId = (int) $locationIdRaw;
+            $location = LearnerLocation::findOne([
+                'id' => $locationId,
+                'organisation_id' => (int) $learner->organisation_id,
+                'learner_id' => (int) $learner->id,
+            ]);
+            if (!$location instanceof LearnerLocation) {
+                throw new BadRequestHttpException('Pickup place not found for this pupil.');
+            }
+            $lesson->pickup_location_id = (int) $location->id;
+            $lesson->pickup_address = $location->address;
+            $lesson->pickup_set_by = $setBy;
+            if ($forceChangeFlag) {
+                // Caller sets changed timestamps when address actually changes.
+            }
+
+            return;
+        }
+
+        if ($hasLocationId && ($locationIdRaw === null || $locationIdRaw === '')) {
+            $lesson->pickup_location_id = null;
+        }
+
+        if ($hasAddress || !$hasLocationId) {
+            $allowEmpty = $hasAddress;
+            $address = $this->resolvePickup(
+                $hasAddress ? $data['pickup_address'] : null,
+                $learner,
+                allowEmpty: $allowEmpty,
+            );
+            // Prefer default saved place when no freeform / location was supplied.
+            if (!$hasAddress && !$hasLocationId) {
+                $default = LearnerLocation::find()
+                    ->andWhere([
+                        'organisation_id' => (int) $learner->organisation_id,
+                        'learner_id' => (int) $learner->id,
+                        'is_default' => true,
+                    ])
+                    ->one();
+                if ($default instanceof LearnerLocation) {
+                    $lesson->pickup_location_id = (int) $default->id;
+                    $lesson->pickup_address = $default->address;
+                    $lesson->pickup_set_by = Lesson::PICKUP_BY_SYSTEM;
+
+                    return;
+                }
+            }
+            $lesson->pickup_address = $address;
+            if ($hasAddress && trim((string) ($data['pickup_address'] ?? '')) !== '') {
+                // Custom freeform — detach from saved place unless location_id also sent.
+                if (!$hasLocationId || $locationIdRaw === null || $locationIdRaw === '') {
+                    $lesson->pickup_location_id = null;
+                }
+            }
+            $lesson->pickup_set_by = $setBy;
+        }
+    }
+
+    /**
+     * @param list<mixed>|string|null $tags
+     */
+    private function applyFocusTags(Lesson $lesson, mixed $tags): void
+    {
+        if ($tags === null) {
+            return;
+        }
+        if (is_string($tags)) {
+            $decoded = json_decode($tags, true);
+            $tags = is_array($decoded) ? $decoded : (preg_split('/[,\\n]+/', $tags) ?: []);
+        }
+        if (!is_array($tags)) {
+            throw new BadRequestHttpException('focus_tags must be a list of short labels.');
+        }
+        $clean = [];
+        foreach ($tags as $tag) {
+            if (!is_string($tag) && !is_numeric($tag)) {
+                continue;
+            }
+            $text = trim((string) $tag);
+            if ($text === '') {
+                continue;
+            }
+            $clean[] = mb_substr($text, 0, 48);
+            if (count($clean) >= 12) {
+                break;
+            }
+        }
+        $lesson->focus_tags_json = $clean === [] ? null : json_encode(array_values(array_unique($clean)));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializePickupLocation(Lesson $lesson): ?array
+    {
+        $loc = $lesson->pickupLocation;
+        if (!$loc instanceof LearnerLocation) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $loc->id,
+            'label' => $loc->label,
+            'icon' => $loc->icon,
+            'address' => $loc->address,
+            'is_default' => (bool) $loc->is_default,
+        ];
     }
 
     /**
@@ -1080,7 +1511,13 @@ class LessonService
             'ends_at_time' => $endsLocal->format('H:i'),
             'timezone' => $organisation->timezone,
             'duration_minutes' => (int) $lesson->duration_minutes,
+            'service_id' => $lesson->service_id !== null ? (int) $lesson->service_id : null,
             'pickup_address' => $lesson->pickup_address,
+            'pickup_location_id' => $lesson->pickup_location_id !== null ? (int) $lesson->pickup_location_id : null,
+            'pickup_set_by' => $lesson->pickup_set_by,
+            'pickup_changed' => $lesson->pickupChangePending(),
+            'pickup_location' => $this->serializePickupLocation($lesson),
+            'focus_tags' => $lesson->focusTags(),
             'status' => $lesson->status,
             'price_pence' => $lesson->price_pence !== null ? (int) $lesson->price_pence : null,
             'settlement' => $lesson->settlement,
@@ -1094,6 +1531,16 @@ class LessonService
                 ? (new TestJourneyService())->buildCompact($learner, $organisation)
                 : null,
             'cancelled_at' => $lesson->cancelled_at,
+            'cancelled_by' => $lesson->cancelled_by,
+            'cancellation_reason' => $lesson->cancellation_reason,
+            'cancellation_notice_hours' => $lesson->cancellation_notice_hours !== null
+                ? (int) $lesson->cancellation_notice_hours
+                : null,
+            'cancellation_notice_label' => (new CancellationPolicyService())->formatNoticeLabel(
+                $lesson->cancellation_notice_hours !== null ? (int) $lesson->cancellation_notice_hours : null,
+            ),
+            'needs_cancellation_settlement' => $lesson->status === Lesson::STATUS_CANCELLED
+                && ($lesson->settlement === null || $lesson->settlement === ''),
             'completed_at' => $lesson->completed_at,
             'no_show_at' => $lesson->no_show_at,
             'status_label' => $this->statusLabel((string) $lesson->status),

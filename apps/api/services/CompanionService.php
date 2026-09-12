@@ -385,6 +385,7 @@ class CompanionService
                 $learner->theory_status,
                 $learner->theory_pass_date,
                 $nowUtc,
+                $learner->theory_test_date,
             );
             $tests = (new TestJourneyService())->build($learner, $org, $nowUtc);
             $payload['practical_test'] = $tests;

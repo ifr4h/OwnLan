@@ -6,6 +6,27 @@ export type TravelToNext = {
   is_warning: boolean
 }
 
+export type LessonWeather = {
+  kind:
+    | 'clear'
+    | 'partly_cloudy'
+    | 'cloudy'
+    | 'fog'
+    | 'drizzle'
+    | 'light_rain'
+    | 'rain'
+    | 'heavy_rain'
+    | 'wintry'
+    | 'thunder'
+    | 'windy'
+  label: string
+  hint: string
+  temperature_c: number | null
+  precipitation_probability: number | null
+  windy: boolean
+  hour: string
+}
+
 export type TodayLesson = {
   id: number
   learner_id: number
@@ -35,6 +56,7 @@ export type TodayLesson = {
   test_journey?: import('./usePupils').TestJourneyCompact | import('./usePupils').TestJourney | null
   travel_to_next?: TravelToNext | null
   finance?: import('./useFinance').FinanceSnapshot | null
+  weather?: LessonWeather | null
 }
 
 export type NeedsAttentionItem = {

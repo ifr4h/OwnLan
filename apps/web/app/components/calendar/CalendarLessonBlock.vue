@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { DiaryLesson } from '~/composables/useLessons'
+import type { DiaryColourMode } from '~/utils/calendar/diaryAreaColour'
+import { resolveDiaryArea } from '~/utils/calendar/diaryAreaColour'
 import {
   contentTierForHeight,
   formatDuration,
@@ -15,6 +17,7 @@ const props = defineProps<{
   blockHeight?: number
   dimmed?: boolean
   selectMode?: boolean
+  colourMode?: DiaryColourMode
   styleInline?: Record<string, string>
 }>()
 
@@ -68,6 +71,15 @@ const showFocus = computed(() =>
   && tier.value === 'spacious',
 )
 
+const area = computed(() => resolveDiaryArea(props.lesson.pickup_address))
+
+const useAreaColour = computed(() => {
+  if ((props.colourMode ?? 'payment') !== 'area') return false
+  if (props.lesson.overlaps) return false
+  if (props.lesson.status === 'cancelled' || props.lesson.status === 'no_show') return false
+  return true
+})
+
 const statusClass = computed(() => {
   // Avoid Array.includes — Safari was throwing props.includes is not a function
   // and blanking the diary grid after a successful load.
@@ -81,6 +93,8 @@ const statusClass = computed(() => {
     toneClass = 'block--cancelled'
   } else if (props.lesson.status === 'no_show') {
     toneClass = 'block--noshow'
+  } else if (useAreaColour.value) {
+    toneClass = 'block--area'
   }
 
   const parts = [toneClass]
@@ -93,7 +107,15 @@ const statusClass = computed(() => {
   return parts.join(' ')
 })
 
-const aria = computed(() => lessonAriaLabel(props.lesson))
+const areaSlotAttr = computed(() =>
+  useAreaColour.value ? String(area.value.slot) : undefined,
+)
+
+const aria = computed(() => {
+  const base = lessonAriaLabel(props.lesson)
+  if (!useAreaColour.value) return base
+  return `${base}, ${area.value.label}`
+})
 
 function onActivate(e: MouseEvent) {
   if (!props.selectMode) return
@@ -109,6 +131,7 @@ function onActivate(e: MouseEvent) {
     type="button"
     class="block"
     :class="[statusClass, { 'block--compact': compact, 'block--dimmed': dimmed }]"
+    :data-area-slot="areaSlotAttr"
     :style="styleInline"
     :aria-label="aria"
     :title="aria"
@@ -144,6 +167,7 @@ function onActivate(e: MouseEvent) {
     :to="`/lessons/${lesson.id}`"
     class="block"
     :class="[statusClass, { 'block--compact': compact, 'block--dimmed': dimmed }]"
+    :data-area-slot="areaSlotAttr"
     :style="styleInline"
     :aria-label="aria"
     :title="aria"
@@ -222,13 +246,46 @@ function onActivate(e: MouseEvent) {
   color: var(--color-diary-block-ink);
 }
 
+.block--area[data-area-slot='0'] {
+  background: var(--color-diary-area-0);
+  color: var(--color-diary-area-0-ink);
+}
+.block--area[data-area-slot='1'] {
+  background: var(--color-diary-area-1);
+  color: var(--color-diary-area-1-ink);
+}
+.block--area[data-area-slot='2'] {
+  background: var(--color-diary-area-2);
+  color: var(--color-diary-area-2-ink);
+}
+.block--area[data-area-slot='3'] {
+  background: var(--color-diary-area-3);
+  color: var(--color-diary-area-3-ink);
+}
+.block--area[data-area-slot='4'] {
+  background: var(--color-diary-area-4);
+  color: var(--color-diary-area-4-ink);
+}
+.block--area[data-area-slot='5'] {
+  background: var(--color-diary-area-5);
+  color: var(--color-diary-area-5-ink);
+}
+.block--area[data-area-slot='6'] {
+  background: var(--color-diary-area-6);
+  color: var(--color-diary-area-6-ink);
+}
+.block--area[data-area-slot='7'] {
+  background: var(--color-diary-area-7);
+  color: var(--color-diary-area-7-ink);
+}
+
 .block--now {
   box-shadow: inset 3px 0 0 var(--color-ownlane-green);
 }
 
 .block--overlap {
-  background: #fde8e8;
-  color: #9b2c2c;
+  background: color-mix(in srgb, var(--color-danger) 28%, var(--surface-card));
+  color: var(--color-danger);
 }
 
 .block--done {
@@ -236,8 +293,8 @@ function onActivate(e: MouseEvent) {
 }
 
 .block--cancelled {
-  background: #f3f3f4;
-  color: #8a8a90;
+  background: var(--surface-wash);
+  color: var(--color-muted);
   opacity: 0.75;
 }
 
@@ -247,8 +304,8 @@ function onActivate(e: MouseEvent) {
 }
 
 .block--noshow {
-  background: #faf3e8;
-  color: #8a5a2b;
+  background: color-mix(in srgb, var(--color-warning) 22%, var(--surface-card));
+  color: var(--color-warning);
 }
 
 .block__top {

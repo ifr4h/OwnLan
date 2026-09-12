@@ -374,9 +374,11 @@ class IntakeService
 
         $theory = $tests['theory_status'] ?? null;
         $learner->theory_status = in_array($theory, ['passed', 'not_yet', 'booked'], true) ? $theory : null;
-        // Only store pass date when they actually passed — booked dates stay in reported answers.
         $learner->theory_pass_date = $theory === 'passed'
             ? $this->optionalDate($tests['theory_pass_date'] ?? null)
+            : null;
+        $learner->theory_test_date = $theory === 'booked'
+            ? $this->optionalDate($tests['theory_pass_date'] ?? $tests['theory_test_date'] ?? null)
             : null;
 
         if (($tests['practical_booked'] ?? null) === true) {
@@ -385,6 +387,11 @@ class IntakeService
             $learner->test_centre = $centre === '' ? null : mb_substr($centre, 0, 255);
             $time = trim((string) ($tests['practical_time'] ?? ''));
             $learner->practical_test_time = preg_match('/^\d{2}:\d{2}$/', $time) === 1 ? $time : null;
+        }
+
+        $desiredStart = trim((string) ($answers['desired_start'] ?? $about['desired_start'] ?? ''));
+        if ($desiredStart !== '') {
+            $learner->available_from = $this->mapDesiredStartToDate($desiredStart);
         }
 
         $learner->availability_is_variable = !empty($availability['changes_often']);
@@ -420,7 +427,7 @@ class IntakeService
             $bits[] = trim((string) $about['instructor_should_know']);
         }
         if (!empty($about['goal'])) {
-            $bits[] = 'Goal: ' . trim((string) $about['goal']);
+            $bits[] = 'Looking for: ' . trim((string) $about['goal']);
         }
         if ($bits !== []) {
             $existing = trim((string) ($learner->private_notes ?? ''));
@@ -558,9 +565,18 @@ class IntakeService
             }
         }
 
+        $theoryStatus = isset($tests['theory_status']) ? (string) $tests['theory_status'] : null;
+        $theoryPass = $theoryStatus === 'passed' && isset($tests['theory_pass_date'])
+            ? (string) $tests['theory_pass_date']
+            : null;
+        $theoryBooked = $theoryStatus === 'booked'
+            ? (string) ($tests['theory_test_date'] ?? $tests['theory_pass_date'] ?? '')
+            : null;
         $theory = TheoryCertificate::statusPayload(
-            isset($tests['theory_status']) ? (string) $tests['theory_status'] : null,
-            isset($tests['theory_pass_date']) ? (string) $tests['theory_pass_date'] : null,
+            $theoryStatus,
+            $theoryPass,
+            null,
+            $theoryBooked !== '' ? $theoryBooked : null,
         );
 
         $attention = $this->attentionFlags($driving, $tests, $theory);
@@ -856,19 +872,84 @@ class IntakeService
     {
         $answers = $intake->getAnswers();
         $identity = is_array($answers['identity'] ?? null) ? $answers['identity'] : [];
+        $driving = is_array($answers['driving'] ?? null) ? $answers['driving'] : [];
+        $about = is_array($answers['about'] ?? null) ? $answers['about'] : [];
+        $availability = is_array($answers['availability'] ?? null) ? $answers['availability'] : [];
         $name = trim(($identity['first_name'] ?? $intake->prefill_first_name ?? '') . ' '
             . ($identity['last_name'] ?? $intake->prefill_last_name ?? ''));
+
+        $area = $this->optionalText($identity['default_pickup_address'] ?? null);
+        if ($area !== null && mb_strlen($area) > 120) {
+            $area = mb_substr($area, 0, 120);
+        }
+        $transmission = isset($driving['transmission']) ? trim((string) $driving['transmission']) : '';
+        if ($transmission === '') {
+            $transmission = null;
+        }
+
+        $experience = null;
+        $goal = null;
+        $availabilitySummary = null;
+        if (in_array($intake->status, [
+            LearnerIntake::STATUS_SUBMITTED,
+            LearnerIntake::STATUS_ACCEPTED,
+            LearnerIntake::STATUS_WAITING,
+        ], true)) {
+            $summary = $this->experienceSummary($driving);
+            $experience = $this->experienceListLabel((string) ($summary['level'] ?? ''));
+            $goal = $this->goalListLabel(isset($about['goal']) ? (string) $about['goal'] : null);
+            $labels = $this->availabilityLabels($availability);
+            if ($labels !== []) {
+                $availabilitySummary = implode(', ', array_slice($labels, 0, 2));
+            }
+        }
 
         return [
             'id' => (int) $intake->id,
             'status' => $intake->status,
             'display_name' => $name !== '' ? $name : 'Pupil link',
+            'area' => $area,
+            'transmission' => $transmission,
+            'experience_label' => $experience,
+            'goal_label' => $goal,
+            'availability_summary' => $availabilitySummary,
             'submitted_at' => $intake->submitted_at,
             'created_at' => $intake->created_at,
+            'invite_expires_at' => $intake->invite_expires_at,
             'learner_id' => $intake->learner_id !== null ? (int) $intake->learner_id : null,
             'is_expired' => $intake->isExpired,
             'is_revoked' => $intake->isRevoked,
         ];
+    }
+
+    private function experienceListLabel(string $level): ?string
+    {
+        return match ($level) {
+            'beginner' => 'Beginner',
+            'private_practice' => 'Private practice',
+            'experienced' => 'Had lessons before',
+            default => null,
+        };
+    }
+
+    private function goalListLabel(?string $goal): ?string
+    {
+        if ($goal === null || trim($goal) === '') {
+            return null;
+        }
+
+        return match (trim($goal)) {
+            'from_scratch' => 'Learn to drive from scratch',
+            'gain_confidence' => 'Help building confidence',
+            'pass_test' => 'Help preparing for a test',
+            'returning' => 'Get back into driving',
+            'switching' => 'A new instructor',
+            'particular_area' => 'Help with a particular skill',
+            'learn_to_drive' => 'Learn to drive',
+            'pass_soon' => 'Pass soon',
+            'refresh' => 'Refresh skills',
+            default => mb_substr(trim($goal), 0, 80),
+        };
     }
 
     private function currentInstructor(int $orgId): ?Instructor
@@ -928,6 +1009,18 @@ class IntakeService
         $dt = DateTimeImmutable::createFromFormat('Y-m-d', $date);
 
         return ($dt !== false && $dt->format('Y-m-d') === $date) ? $date : null;
+    }
+
+    private function mapDesiredStartToDate(string $code): ?string
+    {
+        $today = new DateTimeImmutable('today');
+
+        return match ($code) {
+            'asap' => $today->format('Y-m-d'),
+            'few_weeks' => $today->modify('+21 days')->format('Y-m-d'),
+            'next_month' => $today->modify('first day of next month')->format('Y-m-d'),
+            default => null,
+        };
     }
 
     private function firstError(\yii\base\Model $model): string

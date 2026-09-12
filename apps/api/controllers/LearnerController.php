@@ -10,6 +10,10 @@ use app\services\LearnerImportService;
 use app\services\LearnerService;
 use app\services\PortalAuthService;
 use app\services\PupilAttentionService;
+use app\components\TenantContext;
+use app\models\Instructor;
+use app\models\Learner;
+use app\models\Organisation;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\Response;
@@ -48,6 +52,7 @@ class LearnerController extends BaseApiController
                     'create' => ['POST'],
                     'update' => ['PUT', 'PATCH'],
                     'archive' => ['POST'],
+                    'status' => ['POST'],
                     'booking-suggestion' => ['GET'],
                     'availability' => ['GET'],
                     'replace-availability' => ['PUT'],
@@ -56,6 +61,7 @@ class LearnerController extends BaseApiController
                     'import-template' => ['GET'],
                     'import-preview' => ['POST'],
                     'import-confirm' => ['POST'],
+                    'report' => ['GET'],
                 ],
             ],
         ];
@@ -78,18 +84,105 @@ class LearnerController extends BaseApiController
     {
         $q = Yii::$app->request->get('q');
         $query = is_string($q) ? $q : null;
-        $items = $this->learners->listActive($query);
+        $statusParam = Yii::$app->request->get('status', Learner::STATUS_ALL);
+        $status = is_string($statusParam) ? $statusParam : Learner::STATUS_ALL;
 
-        if ($query !== null && trim($query) !== '') {
-            return ['items' => $items];
+        $items = $this->learners->listByStatus($status, $query);
+        $counts = $this->learners->statusCounts();
+
+        if ($status === Learner::STATUS_WAITING) {
+            $enriched = $this->attention->enrichWaitingList($items);
+
+            return $this->withListFilterMeta([
+                'items' => $enriched['items'],
+                'status' => $status,
+                'counts' => $counts,
+            ]);
         }
 
-        return $this->attention->enrichActiveList($items);
+        if ($status === Learner::STATUS_ACTIVE || $status === Learner::STATUS_ALL) {
+            $enriched = $this->attention->enrichActiveList($items);
+
+            return $this->withListFilterMeta([
+                'items' => $enriched['items'],
+                'attention' => $enriched['attention'],
+                'status' => $status,
+                'counts' => $counts,
+            ]);
+        }
+
+        return $this->withListFilterMeta([
+            'items' => $this->attention->enrichListColumns($items),
+            'status' => $status,
+            'counts' => $counts,
+        ]);
+    }
+
+    public function actionReport(): array
+    {
+        $from = Yii::$app->request->get('from');
+        $to = Yii::$app->request->get('to');
+
+        return $this->learners->report(
+            is_string($from) ? $from : null,
+            is_string($to) ? $to : null,
+        );
+    }
+
+    /**
+     * Extra list meta for conditional filters (instructor, gear).
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function withListFilterMeta(array $payload): array
+    {
+        $orgId = TenantContext::organisationId();
+        if ($orgId === null) {
+            $payload['multi_instructor'] = false;
+            $payload['instructors'] = [];
+            $payload['offers_both_transmissions'] = false;
+
+            return $payload;
+        }
+
+        $rows = Instructor::find()
+            ->select(['id', 'display_name'])
+            ->andWhere(['organisation_id' => $orgId])
+            ->orderBy(['display_name' => SORT_ASC])
+            ->asArray()
+            ->all();
+
+        $instructors = [];
+        foreach ($rows as $row) {
+            $instructors[] = [
+                'id' => (int) $row['id'],
+                'display_name' => (string) $row['display_name'],
+            ];
+        }
+
+        $profileTransmission = Organisation::find()
+            ->select(['profile_transmission'])
+            ->andWhere(['id' => $orgId])
+            ->scalar();
+
+        $payload['multi_instructor'] = count($instructors) > 1;
+        $payload['instructors'] = $instructors;
+        $payload['offers_both_transmissions'] = $profileTransmission === 'both';
+
+        return $payload;
     }
 
     public function actionWaiting(): array
     {
-        return $this->attention->enrichWaitingList($this->learners->listWaiting());
+        $counts = $this->learners->statusCounts();
+        $enriched = $this->attention->enrichWaitingList($this->learners->listWaiting());
+
+        return [
+            'items' => $enriched['items'],
+            'status' => Learner::STATUS_WAITING,
+            'counts' => $counts,
+        ];
     }
 
     public function actionView(int $id): array
@@ -112,6 +205,17 @@ class LearnerController extends BaseApiController
     public function actionArchive(int $id): array
     {
         return $this->learners->archive($id);
+    }
+
+    public function actionStatus(int $id): array
+    {
+        $body = (array) Yii::$app->request->bodyParams;
+        $status = $body['status'] ?? null;
+        if (!is_string($status)) {
+            throw new \yii\web\BadRequestHttpException('Status is required.');
+        }
+
+        return $this->learners->setStatus($id, $status);
     }
 
     public function actionBookingSuggestion(int $id): array

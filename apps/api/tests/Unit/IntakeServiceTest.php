@@ -78,6 +78,11 @@ class IntakeServiceTest extends Unit
 
         $items = $this->intake->listForInstructor('submitted');
         $this->assertCount(1, $items);
+        $this->assertSame('Amina Hassan', $items[0]['display_name']);
+        $this->assertSame('automatic', $items[0]['transmission']);
+        $this->assertSame('Beginner', $items[0]['experience_label']);
+        $this->assertSame('Learn to drive', $items[0]['goal_label']);
+        $this->assertSame('Wed afternoon', $items[0]['availability_summary']);
         $id = (int) $items[0]['id'];
 
         $brief = $this->intake->review($id);
@@ -306,7 +311,27 @@ class IntakeServiceTest extends Unit
             new \DateTimeImmutable('2025-04-01', new \DateTimeZone('UTC')),
         );
         $this->assertSame('ok', $payload['urgency']);
-        $this->assertStringContainsString('valid until', $payload['label']);
+        $this->assertStringContainsString('Valid until', $payload['detail'] ?? '');
+    }
+
+    public function testTheoryCertificateBookedCountdown(): void
+    {
+        $payload = TheoryCertificate::statusPayload(
+            'booked',
+            null,
+            new \DateTimeImmutable('2026-09-12', new \DateTimeZone('UTC')),
+            '2026-09-26',
+        );
+        $this->assertSame('soon', $payload['urgency']);
+        $this->assertSame(14, $payload['days_until_test']);
+        $this->assertStringContainsString('14 days', $payload['label']);
+    }
+
+    public function testTheoryCertificateNotYet(): void
+    {
+        $payload = TheoryCertificate::statusPayload('not_yet');
+        $this->assertSame('Not passed yet', $payload['label']);
+        $this->assertNotEmpty($payload['detail']);
     }
 
     /**

@@ -77,6 +77,7 @@ class PortalHomeService
             $learner->theory_status,
             $learner->theory_pass_date,
             $nowUtc,
+            $learner->theory_test_date,
         );
         $progressPayload = $this->progress->learnerProgress((int) $learner->id, (int) $org->id);
         $routeCount = (int) LessonRoute::find()
@@ -716,6 +717,9 @@ class PortalHomeService
                 ? $lesson->next_focus
                 : null,
             'skills' => array_map(static fn (array $s) => $s['label'], $skills),
+            'cancellation' => $lesson->status === Lesson::STATUS_SCHEDULED
+                ? (new CancellationPolicyService())->previewForLearner($lesson, $org)
+                : null,
         ];
     }
 
@@ -769,9 +773,18 @@ class PortalHomeService
             'test_date' => $journey['test_date'],
             'test_date_display' => $journey['test_date_display'],
             'test_centre' => $journey['test_centre'],
+            'practical_test_time' => $journey['practical_test_time'] ?? null,
             'countdown_label' => $journey['countdown_label'],
             'days_until' => $journey['days_until'],
             'lessons_booked_before_test' => $journey['lessons_booked_before_test'],
+            'hours_booked_before_test' => $journey['hours_booked_before_test'] ?? null,
+            'hours_booked_label' => $journey['hours_booked_label'] ?? null,
+            'cancel_by_date' => $journey['cancel_by_date'] ?? null,
+            'cancel_by_label' => $journey['cancel_by_label'] ?? null,
+            'booking_ref' => $journey['booking_ref'] ?? null,
+            'latest_mock' => $journey['latest_mock'] ?? null,
+            'syllabus_percent' => $journey['syllabus_percent'] ?? null,
+            'syllabus_line' => $journey['syllabus_line'] ?? null,
         ];
     }
 
@@ -957,6 +970,7 @@ class PortalHomeService
             'booking_mode' => $mode,
             'reschedule_mode' => $org->learnerRescheduleMode(),
             'can_cancel' => $org->learnerCanCancel(),
+            'cancellation_notice_hours' => $org->cancellationNoticeHours(),
             'cta_label' => $ctaLabel,
             'cta_path' => $canBook ? '/portal/book' : null,
             'open_request' => $openPayload,

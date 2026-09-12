@@ -115,6 +115,12 @@ class MorningBriefService
         foreach ($this->testGapActions($organisation, $nowUtc, $rebookLearnerIds) as $action) {
             $actions[] = $action;
         }
+        foreach ($this->testPrepActions($organisation, $nowUtc) as $action) {
+            $actions[] = $action;
+        }
+        foreach ($this->profileChangeActions() as $action) {
+            $actions[] = $action;
+        }
         foreach ($this->intakeReviewActions() as $action) {
             $actions[] = $action;
         }
@@ -338,6 +344,104 @@ class MorningBriefService
                 'learner_id' => (int) $learner->id,
                 'lesson_id' => null,
                 'days_until_test' => $days,
+            ];
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Outlook-style test prep reminders when days_until matches pupil offsets.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function testPrepActions(Organisation $organisation, DateTimeImmutable $nowUtc): array
+    {
+        /** @var Learner[] $learners */
+        $learners = TenantContext::scopeByOrganisation(Learner::find())
+            ->andWhere(['archived_at' => null])
+            ->andWhere(['not', ['test_date' => null]])
+            ->all();
+
+        $actions = [];
+        foreach ($learners as $learner) {
+            $journey = $this->tests->build($learner, $organisation, $nowUtc);
+            if ($journey === null) {
+                continue;
+            }
+            $days = (int) $journey['days_until'];
+            if ($days < 0) {
+                continue;
+            }
+            $offsets = $learner->reminderOffsets();
+            if (!in_array($days, $offsets, true)) {
+                continue;
+            }
+
+            $bits = array_filter([
+                $journey['test_centre'] ?? null,
+                $journey['practical_test_time'] ?? null,
+                $journey['cancel_by_label'] ?? null,
+                $journey['hours_booked_label'] ?? null,
+                isset($journey['latest_mock']['result_label'])
+                    ? 'Mock: ' . $journey['latest_mock']['result_label']
+                    : 'No mock recorded',
+                $journey['syllabus_line'] ?? null,
+            ]);
+
+            $actions[] = [
+                'id' => 'test_prep:' . (int) $learner->id . ':' . $days,
+                'kind' => 'test_prep',
+                'priority' => 18,
+                'title' => $this->firstName($learner->fullName) . ' · ' . $journey['countdown_label'],
+                'detail' => implode(' · ', $bits),
+                'cta_label' => 'Open',
+                'cta_path' => '/pupils/' . (int) $learner->id,
+                'learner_id' => (int) $learner->id,
+                'lesson_id' => null,
+                'days_until_test' => $days,
+            ];
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Unseen portal profile / place changes.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function profileChangeActions(): array
+    {
+        $events = (new LearnerProfileChangeService())->unseenForOrganisation(5);
+        $actions = [];
+        foreach ($events as $event) {
+            $changeBits = [];
+            foreach (($event['changes'] ?? []) as $change) {
+                if (!is_array($change)) {
+                    continue;
+                }
+                $from = trim((string) ($change['from'] ?? ''));
+                $to = trim((string) ($change['to'] ?? ''));
+                if ($from === '' && $to === '') {
+                    continue;
+                }
+                $changeBits[] = ($from !== '' ? $from : '—') . ' → ' . ($to !== '' ? $to : '—');
+            }
+            $name = $this->firstName((string) ($event['learner_name'] ?? 'Pupil'));
+            $actions[] = [
+                'id' => 'profile_change:' . (int) $event['id'],
+                'kind' => 'profile_change',
+                'priority' => 22,
+                'title' => $name . ' updated their details',
+                'detail' => $changeBits !== []
+                    ? implode('; ', array_slice($changeBits, 0, 2))
+                    : (string) ($event['summary'] ?? ''),
+                'cta_label' => 'Open',
+                'cta_path' => '/pupils/' . (int) $event['learner_id'],
+                'learner_id' => (int) $event['learner_id'],
+                'lesson_id' => null,
+                'event_id' => (int) $event['id'],
             ];
         }
 

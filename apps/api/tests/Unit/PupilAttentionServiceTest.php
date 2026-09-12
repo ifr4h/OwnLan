@@ -92,6 +92,23 @@ class PupilAttentionServiceTest extends Unit
         }
         $this->assertNotNull($sarahRow);
         $this->assertStringContainsString('Usually weekly', (string) $sarahRow['attention_hint']);
+        $this->assertTrue($sarahRow['needs_booking']);
+        $this->assertFalse($sarahRow['test_soon']);
+
+        $testRow = null;
+        $owedRow = null;
+        foreach ($result['items'] as $row) {
+            if ($row['last_name'] === 'Soon') {
+                $testRow = $row;
+            }
+            if ($row['last_name'] === 'Owes') {
+                $owedRow = $row;
+            }
+        }
+        $this->assertNotNull($testRow);
+        $this->assertTrue($testRow['test_soon']);
+        $this->assertNotNull($owedRow);
+        $this->assertGreaterThan(0, $owedRow['outstanding_pence']);
     }
 
     public function testWaitingListGetsGapMatchSummary(): void

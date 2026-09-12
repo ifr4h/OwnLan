@@ -189,6 +189,7 @@ class AuthService
                 'work_days' => $organisation->workDays(),
                 'work_start_time' => $organisation->workStartTime(),
                 'work_end_time' => $organisation->workEndTime(),
+                'week_starts_on' => $organisation->weekStartsOn(),
             ] : null,
             'membership' => $membership ? [
                 'role' => $membership->role,

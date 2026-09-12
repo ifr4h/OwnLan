@@ -243,7 +243,7 @@ function resetToUpload() {
 
 <style scoped>
 .page {
-  max-width: 720px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-16);

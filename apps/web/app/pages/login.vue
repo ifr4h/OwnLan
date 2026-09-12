@@ -57,6 +57,7 @@ useHead({ title: 'Sign in · OwnLane' })
 
 const route = useRoute()
 const { signIn } = useSignIn()
+const { extractApiError, safeAppRedirect } = useApi()
 const { isAuthenticated: instructorAuth, fetchMe: fetchInstructor } = useAuth()
 const { isAuthenticated: learnerAuth, fetchMe: fetchLearner } = usePortalAuth()
 
@@ -65,12 +66,16 @@ const password = ref('')
 const pending = ref(false)
 const error = ref('')
 
+function postAuthPath(fallback: string): string {
+  return safeAppRedirect(route.query.redirect) || fallback
+}
+
 onMounted(async () => {
   await Promise.all([fetchInstructor(), fetchLearner()])
   if (instructorAuth.value) {
-    await navigateTo('/today')
+    await navigateTo(postAuthPath('/today'))
   } else if (learnerAuth.value) {
-    await navigateTo('/portal')
+    await navigateTo(postAuthPath('/portal'))
   }
 })
 
@@ -82,9 +87,7 @@ async function onSubmit() {
       email: email.value.trim(),
       password: password.value,
     })
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
-      ? route.query.redirect
-      : result.redirect
+    const redirect = postAuthPath(result.redirect)
     await navigateTo(redirect)
   } catch (e: unknown) {
     error.value = extractApiError(e, 'Email or password is incorrect.')

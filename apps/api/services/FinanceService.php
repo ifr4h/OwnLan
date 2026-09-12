@@ -6,12 +6,14 @@ namespace app\services;
 
 use app\components\Money;
 use app\components\OrganisationTime;
+use app\components\ServicePriceResolver;
 use app\components\TenantContext;
 use app\models\Learner;
 use app\models\LearnerPackage;
 use app\models\Lesson;
 use app\models\LessonCharge;
 use app\models\Organisation;
+use app\models\OrganisationService;
 use app\models\PackageCreditUsage;
 use app\models\PackageOffering;
 use app\models\Payment;
@@ -585,13 +587,22 @@ class FinanceService
      * Optional charge when a future lesson is cancelled (late cancellation).
      *
      * @param array<string, mixed> $data charge: waived|outstanding|package
-     * @return array<string, mixed>|null Null when no financial action.
+     * @return array<string, mixed>|null Null when no financial action (omit charge).
      */
     public function settleCancelledLesson(Lesson $lesson, Organisation $org, array $data = []): ?array
     {
-        $charge = $this->normalizeMissedLessonCharge($data, defaultWaived: true);
-        if ($charge === 'waived') {
+        if (!array_key_exists('charge', $data)) {
             return null;
+        }
+
+        $charge = $this->normalizeMissedLessonCharge($data, defaultWaived: false);
+        if ($charge === 'waived') {
+            $existing = $this->findExistingLessonSettlement((int) $lesson->id);
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            return $this->applyMissedLessonCharge($lesson, $org, ['charge' => 'waived']);
         }
 
         $existing = $this->findExistingLessonSettlement((int) $lesson->id);
@@ -1161,20 +1172,49 @@ class FinanceService
      */
     private function resolveLessonPricePence(Lesson $lesson, Organisation $org, array $data): int
     {
-        if (isset($data['price_pence']) || isset($data['price'])) {
-            return $this->resolveAmountPence($data, 'price_pence', 'price');
-        }
-        if ($lesson->price_pence !== null) {
-            return (int) $lesson->price_pence;
-        }
-        $rate = $org->default_hourly_rate_pence;
-        if ($rate !== null && (int) $rate > 0) {
-            return Money::lessonPriceFromHourlyRate((int) $rate, (int) $lesson->duration_minutes);
-        }
+        try {
+            $service = null;
+            if ($lesson->service_id !== null) {
+                $service = OrganisationService::findOne([
+                    'id' => (int) $lesson->service_id,
+                    'organisation_id' => (int) $org->id,
+                ]);
+            } elseif (isset($data['service_id'])) {
+                $service = OrganisationService::findOne([
+                    'id' => (int) $data['service_id'],
+                    'organisation_id' => (int) $org->id,
+                ]);
+            }
+            if ($service === null) {
+                $service = OrganisationService::find()
+                    ->andWhere([
+                        'organisation_id' => (int) $org->id,
+                        'status' => OrganisationService::STATUS_ACTIVE,
+                        'is_default' => true,
+                    ])
+                    ->one();
+            }
 
-        throw new BadRequestHttpException(
-            'Set a lesson price (price_pence) or organisation default hourly rate before charging.',
-        );
+            $local = OrganisationTime::utcToLocal((string) $lesson->starts_at, $org);
+            $pence = ServicePriceResolver::resolvePence(
+                $org,
+                $lesson,
+                $service,
+                (int) $lesson->learner_id,
+                $local,
+                (int) $lesson->duration_minutes,
+                $data,
+            );
+            if ($pence <= 0) {
+                throw new BadRequestHttpException(
+                    'Set a service price or organisation hourly rate before charging.',
+                );
+            }
+
+            return $pence;
+        } catch (\InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
     }
 
     /**

@@ -63,6 +63,17 @@ export const LESSON_PASTELS = [
   { bg: '#ffe3ec', fg: '#9a3d5c' }, // rose
 ] as const
 
+/** Darker washes for dark theme — light ink on deep tint. */
+export const LESSON_PASTELS_DARK = [
+  { bg: '#1f3d2e', fg: '#b6e4c8' },
+  { bg: '#1e3348', fg: '#b5d6ef' },
+  { bg: '#33284a', fg: '#d2c2ef' },
+  { bg: '#4a2c1c', fg: '#f0c4a8' },
+  { bg: '#3f3418', fg: '#ead4a0' },
+  { bg: '#1a3d3a', fg: '#a8ddd6' },
+  { bg: '#4a2435', fg: '#efb6c8' },
+] as const
+
 export function pastelForLearner(seed: string | number | null | undefined): {
   bg: string
   fg: string
@@ -72,7 +83,11 @@ export function pastelForLearner(seed: string | number | null | undefined): {
   for (let i = 0; i < raw.length; i++) {
     hash = (hash * 31 + raw.charCodeAt(i)) >>> 0
   }
-  return LESSON_PASTELS[hash % LESSON_PASTELS.length]!
+  const dark =
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-theme') === 'dark'
+  const palette = dark ? LESSON_PASTELS_DARK : LESSON_PASTELS
+  return palette[hash % palette.length]!
 }
 
 export function localDateTime(date: string, minutes: number): string {

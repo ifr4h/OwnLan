@@ -68,7 +68,6 @@ onMounted(() => {
 <style scoped>
 .cms {
   gap: var(--spacing-20);
-  max-width: var(--content-max-width);
 }
 
 .cms__head {

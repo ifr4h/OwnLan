@@ -51,6 +51,7 @@ class SettingsServiceTest extends Unit
         $this->assertSame([1, 2, 3, 4, 5, 6], $payload['work_days']);
         $this->assertSame('09:00', $payload['work_start_time']);
         $this->assertSame('18:00', $payload['work_end_time']);
+        $this->assertSame(1, $payload['week_starts_on']);
         $this->assertSame('settings@example.com', $payload['contact_email']);
 
         $updated = $this->settings->update([
@@ -64,6 +65,7 @@ class SettingsServiceTest extends Unit
             'work_days' => [1, 2, 3, 4, 5],
             'work_start_time' => '08:00',
             'work_end_time' => '16:00',
+            'week_starts_on' => 7,
             'timezone' => 'Europe/London',
         ]);
 
@@ -72,10 +74,12 @@ class SettingsServiceTest extends Unit
         $this->assertSame(90, $updated['default_lesson_duration_minutes']);
         $this->assertSame(4000, $updated['default_hourly_rate_pence']);
         $this->assertSame([1, 2, 3, 4, 5], $updated['work_days']);
+        $this->assertSame(7, $updated['week_starts_on']);
         $this->assertSame('SW9, Brixton', $updated['service_area']);
 
         $me = $this->auth->currentUserPayload();
         $this->assertSame(90, $me['organisation']['default_lesson_duration_minutes']);
+        $this->assertSame(7, $me['organisation']['week_starts_on']);
         $this->assertSame('Alex Driving', $me['organisation']['name']);
         $this->assertSame('Alex ADI', $me['instructor']['display_name']);
 

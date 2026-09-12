@@ -69,6 +69,7 @@ class RecurringLessonService
 
         $learner = $this->findLearnerOwned((int) $data['learner_id']);
         $now = gmdate('Y-m-d H:i:s');
+        $serviceId = $plan['service_id'];
 
         $series = new LessonSeries();
         $series->organisation_id = (int) $org->id;
@@ -96,6 +97,7 @@ class RecurringLessonService
                 $lesson->learner_id = (int) $learner->id;
                 $lesson->series_id = (int) $series->id;
                 $lesson->status = Lesson::STATUS_SCHEDULED;
+                $lesson->service_id = $serviceId;
                 $lesson->duration_minutes = $plan['duration_minutes'];
                 $lesson->pickup_address = $plan['pickup_address'];
                 $lesson->starts_at = $slot['starts_at_utc'];
@@ -230,7 +232,9 @@ class RecurringLessonService
             throw new BadRequestHttpException('Choose the first lesson date and time.');
         }
 
-        $duration = $this->resolveDuration($data['duration_minutes'] ?? null);
+        $resolved = $this->lessons->resolveServiceAndDuration($org, $data);
+        $duration = $resolved['duration_minutes'];
+        $serviceId = $resolved['service_id'];
         $pickup = $this->resolvePickup($data['pickup_address'] ?? null, $learner);
 
         $untilDate = null;
@@ -288,6 +292,7 @@ class RecurringLessonService
 
         return [
             'duration_minutes' => $duration,
+            'service_id' => $serviceId,
             'pickup_address' => $pickup,
             'anchor_local' => $normalizedAnchor,
             'until_date' => $untilDate,

@@ -308,9 +308,10 @@ async function toggleFavourite() {
   min-width: 160px;
   min-height: 48px;
   padding: 10px 14px;
-  border: 1px solid var(--color-frost-green);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-small);
-  background: var(--color-paper-white);
+  background: var(--surface-card);
+  color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-body-sm);
 }
@@ -324,9 +325,10 @@ async function toggleFavourite() {
 .studio__fav {
   min-height: 44px;
   padding: 8px 12px;
-  border: 1px solid var(--color-frost-green);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   background: transparent;
+  color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-meta);
   cursor: pointer;
@@ -356,7 +358,7 @@ async function toggleFavourite() {
   border: none;
   border-radius: var(--radius-buttons);
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  color: var(--color-on-accent);
   font: inherit;
   box-shadow: var(--shadow-button);
   cursor: pointer;

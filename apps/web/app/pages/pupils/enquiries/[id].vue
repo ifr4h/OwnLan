@@ -111,7 +111,7 @@
           :disabled="acting"
           @click="run(() => addToWaitingList(enquiry!.id))"
         >
-          Add to waiting list
+          Add to waitlist
         </button>
         <button
           v-if="enquiry.actions.includes('decline')"

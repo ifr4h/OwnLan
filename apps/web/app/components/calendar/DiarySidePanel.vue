@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import type { DiaryLesson } from '~/composables/useLessons'
+import type { DiaryBreak } from '~/composables/useDiaryBreaks'
 import type { DiaryOverviewModel } from '~/utils/diary/overviewModel'
 import DiaryOverview from '~/components/calendar/overview/DiaryOverview.vue'
+import DiaryBlockPanel from '~/components/calendar/DiaryBlockPanel.vue'
 import DiaryLessonAppointment, {
+  type BookNextPayload,
   type InstructorBookingRequest,
   type SlotPickState,
 } from '~/components/calendar/DiaryLessonAppointment.vue'
 
-export type DiarySidePanelMode = 'welcome' | 'lesson' | 'request'
+export type DiarySidePanelMode = 'welcome' | 'lesson' | 'request' | 'block'
 
 const props = defineProps<{
   mode: DiarySidePanelMode
   lesson: DiaryLesson | null
   request: InstructorBookingRequest | null
+  block: DiaryBreak | null
   overview: DiaryOverviewModel | null
   slotPick: SlotPickState
   flash: string | null
@@ -25,7 +29,9 @@ const emit = defineEmits<{
   startPickSlot: [kind: 'move' | 'suggest']
   cancelPickSlot: []
   confirmPickSlot: []
-  bookNext: []
+  bookNext: [payload?: BookNextPayload]
+  blockChanged: [message?: string]
+  blockRemoved: []
 }>()
 
 const appointmentRef = ref<InstanceType<typeof DiaryLessonAppointment> | null>(null)
@@ -39,13 +45,20 @@ const showAppointment = computed(() =>
   (props.mode === 'lesson' && !!props.lesson)
   || (props.mode === 'request' && !!props.request),
 )
+
+const ariaLabel = computed(() => {
+  if (props.mode === 'welcome') return 'Diary overview'
+  if (props.mode === 'request') return 'Lesson request'
+  if (props.mode === 'block') return 'Private time'
+  return 'Lesson'
+})
 </script>
 
 <template>
   <aside
     class="panel"
     :data-mode="mode"
-    :aria-label="mode === 'welcome' ? 'Diary overview' : (mode === 'request' ? 'Lesson request' : 'Lesson')"
+    :aria-label="ariaLabel"
   >
     <div v-if="mode === 'welcome'" class="panel__head">
       <p class="panel__eyebrow">Overview</p>
@@ -67,6 +80,14 @@ const showAppointment = computed(() =>
         <p class="panel__quiet">Nothing to show for this period yet.</p>
       </template>
 
+      <DiaryBlockPanel
+        v-else-if="mode === 'block'"
+        :block="block"
+        @close="emit('close')"
+        @saved="emit('blockChanged', $event)"
+        @removed="emit('blockRemoved')"
+      />
+
       <DiaryLessonAppointment
         v-else-if="showAppointment"
         ref="appointmentRef"
@@ -78,7 +99,7 @@ const showAppointment = computed(() =>
         @start-pick-slot="emit('startPickSlot', $event)"
         @cancel-pick-slot="emit('cancelPickSlot')"
         @confirm-pick-slot="emit('confirmPickSlot')"
-        @book-next="emit('bookNext')"
+        @book-next="emit('bookNext', $event)"
       />
     </div>
   </aside>
@@ -133,7 +154,7 @@ const showAppointment = computed(() =>
 }
 
 .panel__x:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--surface-wash);
   color: var(--color-ink-black);
 }
 
@@ -141,7 +162,7 @@ const showAppointment = computed(() =>
   margin: 0 0 12px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: color-mix(in srgb, var(--color-ownlane-green) 12%, white);
+  background: color-mix(in srgb, var(--color-ownlane-green) 16%, var(--surface-card));
   color: var(--color-ownlane-green);
   font-size: var(--text-body-sm);
   font-weight: 600;
@@ -156,7 +177,8 @@ const showAppointment = computed(() =>
   overflow: hidden;
 }
 
-.panel[data-mode='welcome'] .panel__body {
+.panel[data-mode='welcome'] .panel__body,
+.panel[data-mode='block'] .panel__body {
   overflow: auto;
   padding-bottom: 48px;
 }

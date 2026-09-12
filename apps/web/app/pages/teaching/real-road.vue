@@ -252,7 +252,6 @@ async function onSave() {
 <style scoped>
 .real {
   gap: var(--spacing-16);
-  max-width: var(--content-wide-max);
 }
 
 .real__modes {
@@ -264,9 +263,10 @@ async function onSave() {
 .real__mode {
   min-height: 44px;
   padding: 8px 16px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: var(--color-frost-green);
+  background: var(--surface-wash);
+  color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-body-sm);
   cursor: pointer;
@@ -274,7 +274,8 @@ async function onSave() {
 
 .real__mode--on {
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  border-color: var(--color-ownlane-green);
+  color: var(--color-on-accent);
 }
 
 .real__mode--ghost {
@@ -288,7 +289,8 @@ async function onSave() {
   min-height: 280px;
   border-radius: var(--radius-panel);
   overflow: hidden;
-  background: var(--color-frost-green);
+  background: var(--surface-wash);
+  border: 1px solid var(--color-border);
 }
 
 .real__map {
@@ -322,9 +324,10 @@ async function onSave() {
   min-width: 160px;
   min-height: 48px;
   padding: 10px 14px;
-  border: 1px solid var(--color-frost-green);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-small);
-  background: var(--surface-canvas);
+  background: var(--surface-card);
+  color: var(--color-ink-black);
   font: inherit;
 }
 </style>

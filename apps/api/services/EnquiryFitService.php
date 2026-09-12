@@ -210,8 +210,9 @@ class EnquiryFitService
                 ];
             }
             $prevPickup = trim((string) ($lesson->pickup_address ?? '')) ?: null;
-            $prevEndUtc = new DateTimeImmutable((string) $lesson->ends_at, new DateTimeZone('UTC'));
-            $cursor = OrganisationTime::utcToLocal($lesson->ends_at, $org);
+            $startsUtc = new DateTimeImmutable((string) $lesson->starts_at, new DateTimeZone('UTC'));
+            $prevEndUtc = $startsUtc->modify('+' . (int) $lesson->duration_minutes . ' minutes');
+            $cursor = OrganisationTime::utcToLocal($prevEndUtc, $org);
         }
 
         if ($cursor < $dayEnd) {

@@ -6,6 +6,7 @@ const tabs = [
   { to: '/accounts/payments', label: 'Payments' },
   { to: '/accounts/expenses', label: 'Expenses' },
   { to: '/accounts/reports', label: 'Reports' },
+  { to: '/accounts/test-faults', label: 'Test faults' },
   { to: '/accounts/vehicles', label: 'Vehicles' },
   { to: '/accounts/mileage', label: 'Mileage' },
 ]

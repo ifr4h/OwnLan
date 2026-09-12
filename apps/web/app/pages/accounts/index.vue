@@ -131,6 +131,16 @@
       </section>
 
       <section class="ol-panel ol-stack">
+        <div class="panel-head">
+          <h2 class="ol-section-title">Test fault trends</h2>
+          <NuxtLink to="/accounts/test-faults" class="ol-link-action">Open</NuxtLink>
+        </div>
+        <p class="ol-meta">
+          Pass rate, averages, and which fault categories keep coming up on practical tests.
+        </p>
+      </section>
+
+      <section class="ol-panel ol-stack">
         <h2 class="ol-section-title">Monthly trend</h2>
         <ul class="trend">
           <li v-for="row in overview.monthly_trend" :key="row.month" class="trend__row">

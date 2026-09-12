@@ -6,6 +6,7 @@ namespace app\controllers;
 
 use app\services\LearnerSelfAssessmentService;
 use app\services\MockTestService;
+use app\services\ProgressService;
 use Yii;
 use yii\filters\VerbFilter;
 use yii\web\UnauthorizedHttpException;
@@ -42,6 +43,8 @@ class MockTestController extends BaseApiController
                     'learner-list' => ['GET'],
                     'skill-detail' => ['GET'],
                     'learner-progress' => ['GET'],
+                    'record-skill-rating' => ['POST'],
+                    'upsert-progress-note' => ['POST'],
                 ],
             ],
         ];
@@ -135,6 +138,19 @@ class MockTestController extends BaseApiController
     public function actionLearnerProgress(int $id): array
     {
         return (new ProgressService())->instructorProgress($id);
+    }
+
+    public function actionRecordSkillRating(int $id, int $skillId): array
+    {
+        $body = (array) Yii::$app->request->bodyParams;
+        $rating = (string) ($body['rating'] ?? '');
+
+        return (new ProgressService())->recordInstructorRating($id, $skillId, $rating);
+    }
+
+    public function actionUpsertProgressNote(int $id): array
+    {
+        return (new ProgressService())->upsertProgressNote($id, (array) Yii::$app->request->bodyParams);
     }
 
     public function actionSkillDetail(int $learnerId, string $code): array

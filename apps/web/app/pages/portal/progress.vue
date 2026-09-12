@@ -11,11 +11,28 @@
     <p v-else-if="error" class="progress__error" role="alert">{{ error }}</p>
 
     <template v-else-if="data">
+      <header class="progress__lede">
+        <p class="progress__lede-line">{{ ledeLine }}</p>
+        <p v-if="data.next_focus" class="progress__focus">
+          Working on: {{ data.next_focus }}
+        </p>
+        <p v-if="data.went_well" class="progress__went">
+          Last lesson: {{ data.went_well }}
+          <NuxtLink
+            v-if="data.went_well_lesson_id"
+            :to="`/portal/recap/${data.went_well_lesson_id}`"
+            class="progress__went-link"
+          >
+            Recap
+          </NuxtLink>
+        </p>
+      </header>
+
       <PortalMetricStrip class="progress__summary">
-        <PortalMetric :value="data.summary.developing" :label="t('home.developing')" compact />
         <PortalMetric :value="data.summary.confident" :label="t('home.confident')" compact />
-        <PortalMetric :value="data.summary.practising" label="Practising" compact />
-        <PortalMetric :value="data.summary.introduced" label="Introduced" compact />
+        <PortalMetric :value="data.summary.developing" :label="t('progress.rating.developing')" compact />
+        <PortalMetric :value="data.summary.practising" :label="t('progress.rating.practising')" compact />
+        <PortalMetric :value="data.summary.introduced" :label="t('progress.rating.introduced')" compact />
       </PortalMetricStrip>
 
       <section v-if="data.insights.length" class="progress__insights">
@@ -24,16 +41,12 @@
 
       <PortalMainGrid variant="master-detail">
         <div class="progress__skills">
-          <section v-if="data.practised_counts.length" class="progress__practised portal-hide-desktop" aria-labelledby="practised">
-            <h2 id="practised" class="progress__section">{{ t('progress.practised') }}</h2>
-            <PortalSkillBars :items="data.practised_counts.slice(0, 8)" @select="onSelectPractised" />
-          </section>
-
           <section class="progress__cats" aria-labelledby="by-cat">
             <h2 id="by-cat" class="progress__section">{{ t('progress.byCategory') }}</h2>
             <p v-if="!data.categories.length" class="progress__empty">{{ t('progress.noRatings') }}</p>
             <div v-for="cat in data.categories" :key="cat.code" class="cat">
               <h3 class="cat__title">{{ cat.label }}</h3>
+              <p v-if="catNote(cat)" class="cat__note">{{ catNote(cat) }}</p>
               <ul class="cat__list">
                 <li v-for="skill in cat.skills" :key="skill.id">
                   <button
@@ -44,9 +57,10 @@
                   >
                     <span class="cat__name">{{ skill.label }}</span>
                     <span class="cat__rating" :data-rating="skill.rating || 'none'">
-                      {{ skill.rating_label || t('progress.rating.none') }}
+                      {{ displayRating(skill) }}
                     </span>
                   </button>
+                  <p v-if="skillNote(skill)" class="cat__skill-note">{{ skillNote(skill) }}</p>
                 </li>
               </ul>
             </div>
@@ -57,7 +71,10 @@
           <template v-if="selected">
             <h2 class="progress__detail-title">{{ selected.label }}</h2>
             <p class="progress__detail-rating">
-              {{ selected.rating_label || t('progress.rating.none') }}
+              {{ displayRating(selected) }}
+            </p>
+            <p v-if="skillNote(selected)" class="progress__detail-note">
+              {{ skillNote(selected) }}
             </p>
 
             <section class="progress__history" aria-labelledby="over-time">
@@ -92,18 +109,36 @@
 </template>
 
 <script setup lang="ts">
-import type { PortalPractisedCount, PortalProgress, PortalSkill } from '~/composables/usePortal'
+import type { PortalProgress, PortalSkill, PortalSkillCategory } from '~/composables/usePortal'
 
 definePageMeta({ layout: 'portal' })
 useHead({ title: 'Your skills · OwnLane' })
 
+type Note = { body: string; learner_visible?: boolean }
+
 const { t } = usePortalI18n()
 const { fetchProgress } = usePortal()
 
-const data = ref<PortalProgress | null>(null)
+const data = ref<(PortalProgress & {
+  categories: Array<PortalSkillCategory & {
+    note?: Note | null
+    skills: Array<PortalSkill & { note?: Note | null }>
+  }>
+}) | null>(null)
 const loading = ref(true)
 const error = ref('')
-const selected = ref<PortalSkill | null>(null)
+const selected = ref<(PortalSkill & { note?: Note | null }) | null>(null)
+
+const ledeLine = computed(() => {
+  if (!data.value) return ''
+  const total = data.value.categories.reduce((n, c) => n + c.skills.length, 0)
+  const started = data.value.summary.skills_with_rating
+  const practical = data.value.practical?.countdown_label
+  const base = total
+    ? `${started} of ${total} skills started`
+    : t('progress.noRatings')
+  return practical ? `${base}. ${practical}.` : `${base}.`
+})
 
 function ratingWord(rating: string): string {
   const key = `progress.rating.${rating}` as const
@@ -111,23 +146,27 @@ function ratingWord(rating: string): string {
   return mapped === key ? rating : mapped
 }
 
-function onSelectPractised(item: PortalPractisedCount) {
-  if (!data.value) return
-  for (const cat of data.value.categories) {
-    const found = cat.skills.find(s => s.id === item.skill_id)
-    if (found) {
-      selected.value = found
-      return
-    }
-  }
+function displayRating(skill: PortalSkill): string {
+  if (!skill.rating) return t('progress.rating.none')
+  return ratingWord(skill.rating)
+}
+
+function catNote(cat: PortalSkillCategory & { note?: Note | null }): string | null {
+  const body = cat.note?.body?.trim()
+  return body || null
+}
+
+function skillNote(skill: PortalSkill & { note?: Note | null }): string | null {
+  const body = skill.note?.body?.trim()
+  return body || null
 }
 
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    data.value = await fetchProgress()
-    const firstRated = data.value.categories
+    data.value = await fetchProgress() as typeof data.value
+    const firstRated = data.value?.categories
       .flatMap(c => c.skills)
       .find(s => s.history.length > 0)
     selected.value = firstRated ?? null
@@ -147,6 +186,34 @@ onMounted(() => {
 .progress__error {
   color: var(--color-danger);
   font-size: var(--text-body-sm);
+}
+
+.progress__lede {
+  margin-bottom: var(--spacing-8);
+  padding-bottom: var(--spacing-8);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.progress__lede-line {
+  margin: 0;
+  font-size: var(--text-body);
+  color: var(--color-ink-black);
+  font-weight: 600;
+}
+
+.progress__focus,
+.progress__went {
+  margin: 8px 0 0;
+  font-size: var(--text-body-sm);
+  color: var(--color-bark);
+  line-height: 1.45;
+}
+
+.progress__went-link {
+  margin-left: 6px;
+  color: var(--color-ownlane-green);
+  font-weight: 650;
+  text-decoration: none;
 }
 
 .progress__summary {
@@ -186,6 +253,16 @@ onMounted(() => {
   color: var(--color-ownlane-green);
 }
 
+.progress__detail-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: var(--color-parchment);
+  border-left: 3px solid color-mix(in srgb, var(--color-ownlane-green) 50%, var(--color-border));
+  font-size: var(--text-body-sm);
+  color: var(--color-bark);
+  line-height: 1.45;
+}
+
 .progress__skill-link {
   display: inline-flex;
   align-items: center;
@@ -203,7 +280,18 @@ onMounted(() => {
 
 .cat__title {
   font-size: var(--text-body-sm);
+  font-weight: 700;
   margin-bottom: var(--spacing-8);
+}
+
+.cat__note {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  background: var(--color-parchment);
+  border-left: 3px solid color-mix(in srgb, var(--color-ownlane-green) 50%, var(--color-border));
+  font-size: 13px;
+  color: var(--color-bark);
+  line-height: 1.4;
 }
 
 .cat__list {
@@ -244,6 +332,14 @@ onMounted(() => {
 
 .cat__rating[data-rating='confident'] {
   color: var(--color-ownlane-green);
+}
+
+.cat__skill-note {
+  margin: 0 0 8px;
+  padding: 0 0 8px;
+  font-size: 12px;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .spark {

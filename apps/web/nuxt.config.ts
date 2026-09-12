@@ -35,6 +35,15 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', href: '/pwa-192.png' },
         { rel: 'apple-touch-icon', href: '/pwa-192.png' },
       ],
+      // Blocking inline script — must run before first paint.
+      script: [
+        {
+          key: 'ownlane-theme-init',
+          tagPriority: 'critical',
+          innerHTML:
+            "(function(){try{var k='ownlane-theme';var p=localStorage.getItem(k)||'system';var d=p==='dark'||(p!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var t=d?'dark':'light';document.documentElement.setAttribute('data-theme',t);document.documentElement.style.colorScheme=t;}catch(e){}})();",
+        },
+      ],
     },
   },
 

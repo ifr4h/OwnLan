@@ -42,7 +42,7 @@ withDefaults(defineProps<{
   height: 28px;
   border-radius: 6px;
   background: var(--color-ownlane-green, #168B55);
-  color: var(--color-paper-white, #fffefb);
+  color: var(--color-on-accent, #fffefb);
   flex-shrink: 0;
 }
 

@@ -18,7 +18,9 @@ Related settings:
 
 - `learner_reschedule_mode` — same three modes for moving an existing lesson
 - `learner_can_cancel` — portal cancellation on/off
-- `booking_minimum_notice_hours` — default 12
+- `cancellation_notice_hours` — hours of notice for a free cancel (default 48)
+- `cancellation_late_policy` — `decide` (instructor chooses later) or `charge` (auto outstanding)
+- `booking_minimum_notice_hours` — default 12 (for booking, not cancellation)
 - `booking_advance_weeks` — default 4
 - `booking_slot_increment_minutes` — default 30
 - `booking_allowed_durations` — optional JSON list; otherwise usual duration from history
@@ -67,7 +69,13 @@ Reuses travel heuristics from `GapMatchingService` patterns. Does not duplicate 
 
 ## Cancellation → gap intelligence
 
-Learner portal cancellation updates the lesson to `cancelled`. Instructor surfaces (`EmptySeatService`, `GapMatchingService`, Morning Brief) run on the instructor side when viewing the diary or cancelled lesson — same as instructor-initiated cancellation.
+Learner portal cancellation updates the lesson to `cancelled` and applies the org cancellation policy:
+
+- Enough notice → settlement `waived`
+- Short notice + `charge` → settlement `outstanding`
+- Short notice + `decide` → unsettled; instructor settles from the diary (`POST /lessons/{id}/settle-cancellation`)
+
+Short-notice cancels require a reason. Instructor surfaces (`EmptySeatService`, `GapMatchingService`, Morning Brief) run on the instructor side when viewing the diary or cancelled lesson — same as instructor-initiated cancellation.
 
 ## Privacy
 

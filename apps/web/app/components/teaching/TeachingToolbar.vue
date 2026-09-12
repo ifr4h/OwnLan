@@ -126,7 +126,8 @@ const tools: Array<{ id: TeachingTool; labelKey: string }> = [
   flex-direction: column;
   gap: var(--spacing-8);
   padding: var(--spacing-8);
-  background: var(--color-frost-green);
+  background: var(--surface-wash);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-panel);
 }
 
@@ -142,9 +143,9 @@ const tools: Array<{ id: TeachingTool; labelKey: string }> = [
 .ttb__btn {
   min-height: 44px;
   padding: 8px 14px;
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: var(--color-paper-white);
+  background: var(--surface-card);
   color: var(--color-ink-black);
   font: inherit;
   font-size: var(--text-meta);
@@ -154,17 +155,19 @@ const tools: Array<{ id: TeachingTool; labelKey: string }> = [
 
 .ttb__btn--on {
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  border-color: var(--color-ownlane-green);
+  color: var(--color-on-accent);
 }
 
 .ttb__btn--ghost {
   background: transparent;
-  border: 1px solid rgba(17, 17, 24, 0.1);
+  border: 1px solid var(--color-border);
 }
 
 .ttb__btn--accent {
   background: var(--color-ownlane-green);
-  color: var(--color-paper-white);
+  border-color: var(--color-ownlane-green);
+  color: var(--color-on-accent);
 }
 
 .ttb__btn:disabled {

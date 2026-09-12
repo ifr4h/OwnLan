@@ -7,6 +7,7 @@ namespace app\services;
 use app\components\Money;
 use app\components\OrganisationTime;
 use app\components\PortalContext;
+use app\components\ServicePriceResolver;
 use app\components\TenantContext;
 use app\models\Instructor;
 use app\models\Learner;
@@ -14,6 +15,7 @@ use app\models\LearnerAvailability;
 use app\models\LearnerPackage;
 use app\models\Lesson;
 use app\models\Organisation;
+use app\models\OrganisationService;
 use app\travel\TravelProviderFactory;
 use app\travel\TravelTimeProvider;
 use DateTimeImmutable;
@@ -298,7 +300,7 @@ SQL;
         $grouped = $this->groupSlotsByWeek($ranked, $org, $nowLocal);
 
         $creditMinutes = $this->remainingCreditMinutes((int) $learner->id, (int) $org->id);
-        $pricePence = $this->estimatePricePence($org, $duration);
+        $pricePence = $this->estimatePricePence($org, $learner, $duration, $nowLocal);
         $creditAfter = max(0, $creditMinutes - $duration);
 
         return [
@@ -858,14 +860,38 @@ SQL;
         return (int) ($sum ?? 0);
     }
 
-    private function estimatePricePence(Organisation $org, int $durationMinutes): int
-    {
-        $rate = $org->default_hourly_rate_pence;
-        if ($rate === null) {
-            return 0;
+    private function estimatePricePence(
+        Organisation $org,
+        Learner $learner,
+        int $durationMinutes,
+        DateTimeImmutable $localNow,
+    ): int {
+        $service = OrganisationService::find()
+            ->andWhere([
+                'organisation_id' => (int) $org->id,
+                'status' => OrganisationService::STATUS_ACTIVE,
+                'is_default' => true,
+            ])
+            ->one();
+        if ($service === null) {
+            $service = OrganisationService::find()
+                ->andWhere([
+                    'organisation_id' => (int) $org->id,
+                    'status' => OrganisationService::STATUS_ACTIVE,
+                    'duration_minutes' => $durationMinutes,
+                ])
+                ->orderBy(['sort_order' => SORT_ASC, 'id' => SORT_ASC])
+                ->one();
         }
 
-        return Money::lessonPriceFromHourlyRate((int) $rate, $durationMinutes);
+        return ServicePriceResolver::resolvePence(
+            $org,
+            null,
+            $service,
+            (int) $learner->id,
+            $localNow,
+            $durationMinutes,
+        );
     }
 
     private function creditLabel(int $minutes): string
