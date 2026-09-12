@@ -512,6 +512,8 @@ import type { FinancePanel } from '~/composables/useFinance'
 import type { Lesson } from '~/composables/useLessons'
 import { INTAKE_SKILL_GROUPS } from '~/composables/useIntake'
 
+definePageMeta({ flush: true })
+
 const route = useRoute()
 const id = computed(() => Number(route.params.id))
 
@@ -1079,19 +1081,27 @@ function pupilInitials(p: Pupil) {
 .pupil-page {
   width: 100%;
   max-width: none;
-  margin-inline: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-block: -8px;
-  margin-inline: -12px;
-  padding: 0;
-  background: var(--color-parchment);
+  padding: 0 0 28px;
+  flex: 1;
+  background: transparent;
   border-radius: 0;
 }
 
 .pupil-page > .ol-back {
-  margin: 12px 12px 0;
+  margin: 12px 16px 0;
+  color: var(--color-ownlane-green);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pupil-page > .ol-back:hover {
+  color: var(--color-jelly-green);
+  text-decoration: none;
 }
 
 .pupil-page > .ol-muted,
@@ -1099,11 +1109,11 @@ function pupilInitials(p: Pupil) {
   margin: 12px;
 }
 
-/* Original banner: identity + tabs as one white unit */
+/* Identity + tabs as one parchment banner */
 .hero-band {
   margin: 0;
-  padding: 16px 16px 0;
-  background: var(--color-paper-white);
+  padding: 16px 16px 14px;
+  background: var(--color-parchment);
   border: none;
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -1220,46 +1230,43 @@ function pupilInitials(p: Pupil) {
 }
 
 .tabs--page {
-  border-bottom: none;
-  gap: 0;
-  margin: 0;
-}
-
-.tabs {
   display: flex;
-  gap: 0;
+  gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 4px 0 0;
+  border-bottom: none;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
 
-.tabs::-webkit-scrollbar { display: none; }
+.tabs--page::-webkit-scrollbar { display: none; }
 
-.tabs__btn {
+.tabs--page .tabs__btn {
   flex: 0 0 auto;
-  min-height: 44px;
-  padding: 10px 14px;
+  min-height: 36px;
+  padding: 8px 16px;
   border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border-radius: 999px;
   background: transparent;
-  color: var(--color-muted);
+  color: var(--color-ownlane-green);
   font: inherit;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.tabs__btn[data-active='yes'] {
-  color: var(--color-ink-black);
-  border-bottom-color: var(--color-ownlane-green);
-  font-weight: 600;
+.tabs--page .tabs__btn[data-active='yes'] {
+  background: var(--color-ownlane-green);
+  color: var(--color-on-accent, #fff);
+  font-weight: 650;
 }
 
-.tabs__btn:hover { color: var(--color-ink-black); }
+.tabs--page .tabs__btn:hover:not([data-active='yes']) {
+  background: color-mix(in srgb, var(--color-ownlane-green) 10%, transparent);
+  color: var(--color-ownlane-green);
+}
 
 .profile-body {
   display: flex;
@@ -1270,58 +1277,7 @@ function pupilInitials(p: Pupil) {
   padding: 16px 12px 24px;
 }
 
-
-.tabs--page {
-  border-bottom: none;
-  gap: 4px;
-}
-
-
-.tabs {
-  display: flex;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.tabs::-webkit-scrollbar { display: none; }
-
-.tabs__btn {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 10px 14px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-bark);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.tabs__btn[data-active='yes'] {
-  color: var(--color-ink-black);
-  border-bottom-color: var(--color-ownlane-green);
-  font-weight: 600;
-}
-
-.tabs__btn:hover { color: var(--color-ink-black); }
-
-.profile-body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: none;
-}
-
-/* Reference lock: soft wash + floating white cards, Notes thinnest */
+/* Floating white cards on the page surface */
 .dash {
   display: grid;
   grid-template-columns:
@@ -1330,10 +1286,10 @@ function pupilInitials(p: Pupil) {
     minmax(250px, 1.15fr);
   gap: 20px;
   align-items: stretch;
-  margin: 0 -8px;
-  padding: 16px 8px 28px;
-  background: color-mix(in srgb, var(--color-parchment) 70%, #eef0f2);
-  border-radius: 16px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .dash-card {
@@ -1345,7 +1301,7 @@ function pupilInitials(p: Pupil) {
   box-shadow: 0 1px 3px color-mix(in srgb, var(--color-ink-black) 6%, transparent);
 }
 
-.dash-card--details { grid-column: 1; grid-row: 1 / span 2; }
+.dash-card--details { grid-column: 1; grid-row: 1; }
 .dash-card--notes {
   grid-column: 2;
   grid-row: 1;
@@ -1418,9 +1374,16 @@ function pupilInitials(p: Pupil) {
   text-align: left;
 }
 
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+  margin: 0;
+}
 
 .fact-cell { min-width: 0; }
 .fact-cell--wide { grid-column: 1 / -1; }
+.fact-cell__nowrap { white-space: nowrap; }
 
 .fact-cell dt {
   margin: 0 0 5px;
@@ -1772,7 +1735,7 @@ function pupilInitials(p: Pupil) {
 
 @media (max-width: 720px) {
   .pupil-page {
-    margin-inline: 0;
+    padding-bottom: 16px;
   }
 
   .hero-band {

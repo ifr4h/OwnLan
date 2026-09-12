@@ -107,7 +107,10 @@
 
       <p v-if="logoutWarning" class="app__warn" role="alert">{{ logoutWarning }}</p>
 
-      <main class="app__main">
+      <main
+        class="app__main"
+        :class="{ 'app__main--flush': Boolean(route.meta.flush) }"
+      >
         <slot />
       </main>
     </div>
@@ -381,6 +384,13 @@ async function onLogout() {
   flex: 1;
   width: 100%;
   padding: var(--spacing-20) var(--spacing-16) calc(88px + env(safe-area-inset-bottom));
+}
+
+.app__main--flush {
+  padding: 0 0 calc(88px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--color-parchment) 55%, white);
+  display: flex;
+  flex-direction: column;
 }
 
 .app__warn {
@@ -791,6 +801,10 @@ async function onLogout() {
   .app__main {
     padding: 28px 32px 48px;
     max-width: none;
+  }
+
+  .app__main--flush {
+    padding: 0;
   }
 
   .quick {
